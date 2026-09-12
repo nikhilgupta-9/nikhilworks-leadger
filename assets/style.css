@@ -144,6 +144,8 @@
   tbody tr:last-child td{border-bottom:none;}
   tbody tr.clickable{cursor:pointer;}
   tbody tr.clickable:hover{background:var(--surface-2);}
+  tbody td.clickable{cursor:pointer;}
+  tbody td.clickable:hover{text-decoration:underline;}
   td.num, th.num{text-align:right;}
   .name-cell{font-weight:700;}
   .muted{color:var(--muted);}
@@ -200,6 +202,7 @@
 
   .pay-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dashed var(--line); font-size:13px;}
   .pay-row:last-child{border-bottom:none;}
+  .row-actions{display:flex; gap:6px; flex-wrap:nowrap;}
 
   /* ---------- Projects (client detail) ---------- */
   .project-list{display:flex; flex-direction:column; gap:12px; margin-bottom:26px;}

@@ -136,16 +136,18 @@ created, and you're in. From there:
 
 - **Dashboard** — a live overview across all clients and projects: total
   billed, received, pending, and which projects still owe money.
-- **Clients** — add a client (name, contact, GSTIN, state, address). The
-  same "New Client" form also has an optional **first project** section —
-  give it a title, amount, start date, status, and (if you've already
-  been paid something) how much you've received so far — and the client,
-  their first project, and that opening payment are all saved together in
-  one go. Leave the project title blank to save just the contact and add
-  projects later.
+- **Clients** — add a client (name, contact, GSTIN, state, address). A
+  client is just the company/person — open one to add their **projects**.
 - **Client detail → Projects** — open any client to see all of their
   projects/services. Add more any time from here — each has its own
   total value, GST rate, start date and status. Tick **"this project is
+  outsourced"** on any project to also track a vendor name, what you owe
+  them, and payments you've made to them — completely separate from what
+  the client owes you.
+- **Projects** — a master list of every project across every client in
+  one table, numbered, with its status and pending balance, and quick
+  buttons right there to record a payment or generate a Proforma / Tax
+  invoice for it — no need to open the client first. Tick **"this project is
   outsourced"** on any project to also track a vendor name, what you owe
   them, and payments you've made to them — completely separate from what
   the client owes you.
