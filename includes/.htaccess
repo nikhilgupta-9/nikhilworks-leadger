@@ -1,0 +1,10 @@
+# Nothing in this folder is ever requested directly by the browser — it's
+# only pulled in by PHP's require/include. Block all direct web access.
+
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

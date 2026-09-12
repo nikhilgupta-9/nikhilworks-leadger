@@ -1,0 +1,29 @@
+# NikhilWorks Ledger — root .htaccess
+# Blocks direct web access to files that must never be served as-is:
+# your database credentials and the raw SQL schema. Works on both old
+# (Apache 2.2) and current (Apache 2.4+) syntax, so it holds on whatever
+# your shared host runs.
+
+<IfModule mod_authz_core.c>
+  # Apache 2.4+
+  <FilesMatch "^(config\.php|schema\.sql)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  # Apache 2.2 fallback
+  <FilesMatch "^(config\.php|schema\.sql)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>
+
+# Don't let the server list folder contents if there's no index file.
+Options -Indexes
+
+# Hide server signature / prevent some default info leaks (safe no-ops if
+# your host disallows overriding these — cPanel hosts usually allow them).
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>

@@ -1,0 +1,276 @@
+
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-row">
+        <span class="logo-chip"><img src="assets/img/logo-icon.png" alt="NikhilWorks logo"></span>
+        <div>
+          <div class="word">Nikhil<b>Works</b></div>
+          <div class="tag">Client &amp; Invoice Ledger</div>
+        </div>
+      </div>
+    </div>
+    <nav class="navlist" id="navlist">
+      <button data-view="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
+      <button data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="7.5" r="2.5"/><path d="M15 13.5c2.9.3 5 2.6 5 6"/></svg>Clients</button>
+      <button data-view="invoices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h6M9 16h6M9 8h3"/></svg>Invoices</button>
+      <button data-view="outsourcing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/></svg>Outsourcing</button>
+      <button data-view="letterhead"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18l-3-2-2.5 2-2.5-2-2.5 2L7 19l-3 2z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Letterhead</button>
+      <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.7 7.7 0 000-2l2-1.5-2-3.4-2.3.9a7.6 7.6 0 00-1.7-1L15 3h-4l-.4 2.4a7.6 7.6 0 00-1.7 1l-2.3-.9-2 3.4L6.6 11a7.7 7.7 0 000 2l-2 1.5 2 3.4 2.3-.9c.5.4 1.1.7 1.7 1L11 21h4l.4-2.4c.6-.3 1.2-.6 1.7-1l2.3.9 2-3.4z"/></svg>Settings</button>
+    </nav>
+    <div class="foot" id="sidebarFoot">nikhilworks.com<br>Internal use only</div>
+  </aside>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="view active" data-view="dashboard">
+      <div class="topbar">
+        <div><h1>Dashboard</h1><div class="sub" id="todayLine"></div></div>
+        <button class="btn btn-accent" data-action="new-client">+ New Client</button>
+      </div>
+      <div class="stat-row">
+        <div class="card stat"><div class="label">Clients</div><div class="value num" id="statClients">–</div><div class="delta" id="statClientsSub"></div></div>
+        <div class="card stat"><div class="label">Total Billed</div><div class="value num" id="statBilled">–</div><div class="delta" id="statBilledSub">across all projects</div></div>
+        <div class="card stat"><div class="label">Received</div><div class="value num" id="statReceived">–</div><div class="delta" id="statReceivedSub"></div></div>
+        <div class="card stat"><div class="label">Pending</div><div class="value num" id="statPending">–</div><div class="delta" id="statPendingSub"></div></div>
+      </div>
+
+      <div class="section-title">Projects with pending payment</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Client</th><th>Project / Service</th><th>Status</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Pending</th><th>Progress</th></tr></thead>
+          <tbody id="dashPendingBody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="section-title">Recent invoices</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Number</th><th>Client</th><th>Type</th><th>Date</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="dashInvoiceBody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CLIENTS LIST -->
+    <section class="view" data-view="clients">
+      <div class="topbar">
+        <div><h1>Clients</h1><div class="sub">Every client and their overall billing status</div></div>
+        <button class="btn btn-accent" data-action="new-client">+ New Client</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Client</th><th class="num">Projects</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Pending</th></tr></thead>
+          <tbody id="clientsBody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- CLIENT DETAIL -->
+    <section class="view" data-view="client-detail">
+      <button class="back-link" data-action="go-clients">← All clients</button>
+      <div id="clientDetailBody"></div>
+    </section>
+
+    <!-- PROJECT DETAIL -->
+    <section class="view" data-view="project-detail">
+      <button class="back-link" data-action="go-back-to-client">← Back to client</button>
+      <div id="projectDetailBody"></div>
+    </section>
+
+    <!-- INVOICES LIST -->
+    <section class="view" data-view="invoices">
+      <div class="topbar">
+        <div><h1>Invoices</h1><div class="sub">Proforma &amp; tax invoices you've generated</div></div>
+        <button class="btn btn-accent" data-action="new-invoice">+ New Invoice</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Number</th><th>Client</th><th>Project</th><th>Type</th><th>Date</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="invoicesBody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- INVOICE PREVIEW -->
+    <section class="view" data-view="invoice-preview">
+      <button class="back-link" data-action="go-invoices">← All invoices</button>
+      <div class="doc-toolbar">
+        <h2 id="invPreviewTitle" style="font-size:17px;"></h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-ghost" data-action="print-doc">🖨 Print / Save PDF</button>
+        </div>
+      </div>
+      <div class="paper-scroll"><div class="paper" id="printArea"></div></div>
+    </section>
+
+    <!-- OUTSOURCING -->
+    <section class="view" data-view="outsourcing">
+      <div class="topbar">
+        <div><h1>Outsourcing</h1><div class="sub">Projects you've outsourced — what you owe &amp; have paid your vendors</div></div>
+      </div>
+      <div class="stat-row stat-row-3">
+        <div class="card stat"><div class="label">Outsourced Projects</div><div class="value num" id="outStatCount">–</div></div>
+        <div class="card stat"><div class="label">Vendor Cost (total)</div><div class="value num" id="outStatCost">–</div></div>
+        <div class="card stat"><div class="label">Owed to Vendors</div><div class="value num" id="outStatPending">–</div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Client</th><th>Project</th><th>Vendor</th><th class="num">Vendor Cost</th><th class="num">Advance/Paid</th><th class="num">Owed</th></tr></thead>
+          <tbody id="outsourcingBody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- LETTERHEAD -->
+    <section class="view" data-view="letterhead">
+      <div class="topbar">
+        <div><h1>Letterhead</h1><div class="sub">Write a letter on NikhilWorks letterhead, then print or save as PDF</div></div>
+        <button class="btn btn-ghost" data-action="print-doc">🖨 Print / Save PDF</button>
+      </div>
+      <div class="paper-scroll"><div class="paper" id="letterheadPaper"></div></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" data-view="settings">
+      <div class="topbar"><div><h1>Settings</h1><div class="sub">Business details used on invoices &amp; letterhead</div></div></div>
+      <div class="card" style="max-width:640px; padding:24px;" id="settingsForm">Loading…</div>
+    </section>
+  </main>
+</div>
+
+<!-- Client modal -->
+<div class="modal-backdrop" id="clientModalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3 id="clientModalTitle">New Client</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="clientId">
+      <div class="field"><label>Client / Company name</label><input id="cName" placeholder="e.g. Amazing Infotech Pvt. Ltd."></div>
+      <div class="grid2">
+        <div class="field"><label>Contact phone</label><input id="cPhone" placeholder="+91 98xxxxxxx"></div>
+        <div class="field"><label>Contact email</label><input id="cEmail" placeholder="name@client.com"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Client GSTIN (optional)</label><input id="cGstin" placeholder="e.g. 07XXXXX0000X1ZH"></div>
+        <div class="field"><label>Client state (for GST)</label>
+          <select id="cState">
+            <option>Delhi</option><option>Uttar Pradesh</option><option>Haryana</option><option>Maharashtra</option>
+            <option>Karnataka</option><option>Gujarat</option><option>West Bengal</option><option>Tamil Nadu</option>
+            <option>Telangana</option><option>Rajasthan</option><option>Punjab</option><option>Other India</option><option>Outside India</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Address</label><textarea id="cAddress" placeholder="Billing address"></textarea></div>
+      <div class="field"><label>Notes</label><textarea id="cNotes" placeholder="Anything worth remembering about this client"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-client">Save Client</button></div>
+  </div>
+</div>
+
+<!-- Project modal -->
+<div class="modal-backdrop" id="projectModalBackdrop">
+  <div class="modal wide">
+    <div class="modal-head"><h3 id="projectModalTitle">New Project / Service</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="projectId">
+      <div class="field"><label>Client</label><select id="pClientId"></select></div>
+      <div class="field"><label>Project / service title</label><input id="pTitle" placeholder="e.g. Website Redesign &amp; SEO"></div>
+      <div class="field"><label>Description (optional)</label><textarea id="pDescription" placeholder="What's included"></textarea></div>
+      <div class="grid3">
+        <div class="field"><label>Total value (₹)</label><input type="number" id="pTotal" placeholder="70000"></div>
+        <div class="field"><label>GST rate (%)</label><input type="number" id="pGstRate" value="18"></div>
+        <div class="field"><label>Start date</label><input type="date" id="pStart"></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="pStatus"><option value="active">Active</option><option value="on-hold">On hold</option><option value="completed">Completed</option></select>
+      </div>
+      <label class="check-row"><input type="checkbox" id="pOutsourced"> This project is (partly) outsourced to a vendor</label>
+      <div id="vendorFields" class="vendor-fields">
+        <div class="grid2">
+          <div class="field"><label>Vendor name</label><input id="pVendorName" placeholder="e.g. Freelancer / agency name"></div>
+          <div class="field"><label>Vendor phone (optional)</label><input id="pVendorPhone"></div>
+        </div>
+        <div class="field"><label>Vendor cost (₹) — what you pay them</label><input type="number" id="pVendorCost" placeholder="20000"></div>
+        <div class="field"><label>Vendor notes (optional)</label><textarea id="pVendorNotes" placeholder="Scope you've handed off, agreed terms, etc."></textarea></div>
+      </div>
+      <div class="field"><label>Internal notes (optional)</label><textarea id="pNotes"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-project">Save Project</button></div>
+  </div>
+</div>
+
+<!-- Payment modal (client payment against a project) -->
+<div class="modal-backdrop" id="paymentModalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>Record Payment Received</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="paymentProjectId">
+      <div class="field" id="paymentProjectPickWrap"><label>Project</label><select id="paymentProjectSelect"></select></div>
+      <div class="grid2">
+        <div class="field"><label>Amount received (₹)</label><input type="number" id="pAmount" placeholder="10000"></div>
+        <div class="field"><label>Date</label><input type="date" id="pDate"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>For month</label><input type="month" id="pMonth"></div>
+        <div class="field"><label>Mode</label>
+          <select id="pMode"><option>Bank Transfer</option><option>UPI</option><option>Cash</option><option>Cheque</option><option>Card</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Note (optional)</label><input id="pNote" placeholder="e.g. September retainer"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-payment">Save Payment</button></div>
+  </div>
+</div>
+
+<!-- Vendor payment modal -->
+<div class="modal-backdrop" id="vendorPaymentModalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>Record Payment To Vendor</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="vpProjectId">
+      <div class="grid2">
+        <div class="field"><label>Amount paid (₹)</label><input type="number" id="vpAmount" placeholder="10000"></div>
+        <div class="field"><label>Date</label><input type="date" id="vpDate"></div>
+      </div>
+      <div class="field"><label>Mode</label>
+        <select id="vpMode"><option>Bank Transfer</option><option>UPI</option><option>Cash</option><option>Cheque</option><option>Card</option><option>Other</option></select>
+      </div>
+      <div class="field"><label>Note (optional)</label><input id="vpNote" placeholder="e.g. Advance for module 1"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-vendor-payment">Save Payment</button></div>
+  </div>
+</div>
+
+<!-- Invoice builder modal -->
+<div class="modal-backdrop" id="invoiceModalBackdrop">
+  <div class="modal wide">
+    <div class="modal-head"><h3>New Invoice</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <div class="grid3">
+        <div class="field"><label>Client</label><select id="iClient"></select></div>
+        <div class="field"><label>Project (optional)</label><select id="iProject"><option value="">— Custom / no project —</option></select></div>
+        <div class="field"><label>Type</label><select id="iType"><option value="proforma">Proforma Invoice</option><option value="tax">Tax Invoice</option></select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Invoice date</label><input type="date" id="iDate"></div>
+        <div class="field"><label>Due date (optional)</label><input type="date" id="iDue"></div>
+      </div>
+
+      <div class="field">
+        <label>Line items</label>
+        <div id="itemRows"></div>
+        <button class="btn btn-ghost btn-sm" data-action="add-item" type="button">+ Add line item</button>
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>GST rate (%) — used only for Tax Invoice</label><input type="number" id="iGstRate" value="18"></div>
+        <div class="field"><label>Place of supply</label><input id="iPlace" readonly></div>
+      </div>
+      <div class="field"><label>Notes / Terms</label><textarea id="iNotes">Payment due within 7 days of invoice date via bank transfer or UPI. Late payments may attract additional charges.</textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-invoice">Generate Invoice</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
