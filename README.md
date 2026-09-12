@@ -11,12 +11,15 @@ needed).
 
 This guide assumes no prior server experience. Follow the steps in order.
 
-> **Upgrading from an earlier copy of this tool?** The database structure
-> changed in this version (clients can now have multiple projects, each
-> with its own payments). Re-import `schema.sql` into a **fresh** database
-> rather than over an old one — the table layout isn't compatible with the
-> previous single-project version, and old data won't carry over
-> automatically.
+> **Already have this running with real client data?** Don't re-import
+> `schema.sql` over your live database — that's for brand-new installs
+> only. Instead, run `migrations/v1_to_v2.sql` on your existing database
+> (same steps as importing `schema.sql`: phpMyAdmin → your database →
+> Import → choose the file → Go). It safely moves every existing client's
+> service/amount/status into the new `projects` table, keeps all their
+> payments and invoices correctly linked, and doesn't delete anything.
+> It's also safe to run more than once if you're ever unsure whether it
+> already ran.
 
 ---
 
@@ -133,14 +136,19 @@ created, and you're in. From there:
 
 - **Dashboard** — a live overview across all clients and projects: total
   billed, received, pending, and which projects still owe money.
-- **Clients** — add a client (name, contact, GSTIN, state, address). A
-  client is just the company/person — open one to add their **projects**.
-- **Client detail → Projects** — each client can have any number of
-  projects/services (e.g. "Website Redesign & SEO", "Google Ads
-  Management"), each with its own total value, GST rate, start date and
-  status. Tick **"this project is outsourced"** on any project to also
-  track a vendor name, what you owe them, and payments you've made to
-  them — completely separate from what the client owes you.
+- **Clients** — add a client (name, contact, GSTIN, state, address). The
+  same "New Client" form also has an optional **first project** section —
+  give it a title, amount, start date, status, and (if you've already
+  been paid something) how much you've received so far — and the client,
+  their first project, and that opening payment are all saved together in
+  one go. Leave the project title blank to save just the contact and add
+  projects later.
+- **Client detail → Projects** — open any client to see all of their
+  projects/services. Add more any time from here — each has its own
+  total value, GST rate, start date and status. Tick **"this project is
+  outsourced"** on any project to also track a vendor name, what you owe
+  them, and payments you've made to them — completely separate from what
+  the client owes you.
 - **Payments** — record client payments against a specific project, any
   time, as many times as you like (e.g. one row per month for an ongoing
   retainer). The project's pending balance updates automatically.

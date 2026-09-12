@@ -532,6 +532,19 @@
     $("#cAddress").value = c ? (c.address||"") : "";
     $("#cState").value = c ? (c.state||"Delhi") : "Delhi";
     $("#cNotes").value = c ? (c.notes||"") : "";
+    // First-project fields only make sense while creating a brand-new
+    // client — once a client exists, projects are added/edited from
+    // their own detail page instead.
+    var projSection = $("#clientProjectSection");
+    projSection.style.display = c ? "none" : "";
+    if(!c){
+      $("#cpTitle").value = "";
+      $("#cpTotal").value = "";
+      $("#cpStart").value = todayISO();
+      $("#cpStatus").value = "active";
+      $("#cpPaid").value = "";
+      $("#cpPaidDate").value = todayISO();
+    }
     openModal("clientModalBackdrop");
   }
 
@@ -813,6 +826,28 @@
       notes: $("#cNotes").value.trim()
     };
     api("api/clients.php", {method:"POST", body: JSON.stringify(payload)})
+      .then(function(result){
+        if(id) return result; // editing: nothing else to chain
+        var newClientId = result.id;
+        var projTitle = $("#cpTitle").value.trim();
+        if(!projTitle) return result; // no first project given — client-only save
+        var projPayload = {
+          op:"create", client_id: newClientId, title: projTitle,
+          total_amount: Number($("#cpTotal").value)||0, gst_rate: 18,
+          start_date: $("#cpStart").value || todayISO(), status: $("#cpStatus").value
+        };
+        return api("api/projects.php", {method:"POST", body: JSON.stringify(projPayload)})
+          .then(function(projResult){
+            var paidAmount = Number($("#cpPaid").value)||0;
+            if(paidAmount <= 0) return result;
+            var payPayload = {
+              op:"create", project_id: projResult.id, amount: paidAmount,
+              date: $("#cpPaidDate").value || todayISO(), month: ($("#cpPaidDate").value||todayISO()).slice(0,7),
+              mode: "Bank Transfer", note: "Recorded while adding client"
+            };
+            return api("api/payments.php", {method:"POST", body: JSON.stringify(payPayload)}).then(function(){ return result; });
+          });
+      })
       .then(function(){ toast(id?"Client updated":"Client added"); closeModals(); return refreshAndRender(); })
       .catch(function(err){ toast("Couldn't save: "+err.message); });
   }
