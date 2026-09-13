@@ -1,10 +1,14 @@
 <?php
 /**
- * NikhilWorks Ledger — site configuration.
+ * NikhilWorks Ledger — site configuration TEMPLATE.
  *
- * Fill in your MySQL database details below (from your hosting cPanel,
- * under "MySQL Databases"). Then import schema.sql into that database
- * before visiting install/setup.php.
+ * This file is tracked in git; config.php itself is NOT (it's in
+ * .gitignore) so your real database password and secret key never get
+ * committed or pushed anywhere. To set up:
+ *   1. Copy this file to config.php (same folder).
+ *   2. Fill in your real MySQL database details below (from your hosting
+ *      cPanel, under "MySQL Databases").
+ *   3. Import schema.sql into that database, then visit install/setup.php.
  */
 
 // ---- Database ----

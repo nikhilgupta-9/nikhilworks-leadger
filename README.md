@@ -65,7 +65,7 @@ full username, and the password.
    - A subfolder of your main site, e.g. `nikhilworks.com/ledger` → the
      `ledger` folder inside `public_html`.
 3. Upload every file and folder from this package (`index.php`,
-   `login.php`, `config.php`, `schema.sql`, `api/`, `assets/`,
+   `login.php`, `config.example.php`, `schema.sql`, `api/`, `assets/`,
    `includes/`, `install/`, `partials/`, `.htaccess`, and the `.htaccess`
    files inside `includes/` and `partials/`) into that folder, keeping the
    same folder structure. Use File Manager's "Upload" or upload the whole
@@ -96,9 +96,12 @@ change any of it later from the Settings page inside the tool.
 
 ## Step 4 — Connect the app to your database
 
-1. Back in File Manager, open `config.php` for editing (right-click →
-   **Edit**, or **Code Editor**).
-2. Fill in the four database values from Step 1:
+1. Back in File Manager, **copy `config.example.php` to a new file named
+   `config.php`** in the same folder (right-click `config.example.php` →
+   Copy → name it `config.php`). This keeps your real password out of
+   `config.example.php`, which is the one that ships with future updates.
+2. Open the new `config.php` for editing (right-click → **Edit**, or
+   **Code Editor**) and fill in the four database values from Step 1:
 
    ```php
    define('DB_HOST', 'localhost');       // almost always "localhost" on shared hosting
