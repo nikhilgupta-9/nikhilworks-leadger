@@ -42,21 +42,23 @@ if ($method === 'POST') {
     if ($name === '') json_error('Client name is required.');
     $phone = str_field($body, 'phone');
     $email = str_field($body, 'email');
+    $contactName = str_field($body, 'contact_name');
+    $contactTitle = str_field($body, 'contact_title');
     $gstin = str_field($body, 'gstin');
     $address = str_field($body, 'address');
     $state = str_field($body, 'state', 'Delhi');
     $notes = str_field($body, 'notes');
 
     if ($op === 'create') {
-      $stmt = $pdo->prepare("INSERT INTO clients (name, phone, email, gstin, address, state, notes)
-                              VALUES (?,?,?,?,?,?,?)");
-      $stmt->execute([$name, $phone, $email, $gstin, $address, $state, $notes]);
+      $stmt = $pdo->prepare("INSERT INTO clients (name, phone, email, contact_name, contact_title, gstin, address, state, notes)
+                              VALUES (?,?,?,?,?,?,?,?,?)");
+      $stmt->execute([$name, $phone, $email, $contactName, $contactTitle, $gstin, $address, $state, $notes]);
       json_out(['id' => (int)$pdo->lastInsertId()], 201);
     } else {
       $id = int_field($body, 'id');
       if (!$id) json_error('Missing client id.');
-      $stmt = $pdo->prepare("UPDATE clients SET name=?, phone=?, email=?, gstin=?, address=?, state=?, notes=? WHERE id=?");
-      $stmt->execute([$name, $phone, $email, $gstin, $address, $state, $notes, $id]);
+      $stmt = $pdo->prepare("UPDATE clients SET name=?, phone=?, email=?, contact_name=?, contact_title=?, gstin=?, address=?, state=?, notes=? WHERE id=?");
+      $stmt->execute([$name, $phone, $email, $contactName, $contactTitle, $gstin, $address, $state, $notes, $id]);
       json_out(['ok' => true]);
     }
   }

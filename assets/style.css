@@ -263,6 +263,68 @@
   .letter-editor{width:100%; min-height:180mm; border:none; outline:none; font-family:"Figtree",sans-serif; font-size:13px; line-height:1.8; color:#0a1f1c;}
   .letter-editor:empty:before{content:attr(data-placeholder); color:#9fb0ac;}
 
+  /* ---------- Invoice v2 (exact-match Proforma / Tax Invoice layout) ---------- */
+  .paper{position:relative;}
+  .inv-bar{position:absolute; left:0; right:0; height:9px; background:var(--primary);}
+  .inv-bar.top{top:0;}
+  .inv-bar.bottom{bottom:0;}
+  .inv-wrap{padding:14px 2px 6px;}
+  .inv-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;}
+  .nw-badge{display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; background:var(--primary); color:#fff; font-weight:800; font-size:14px; letter-spacing:.02em; border-radius:6px; margin-bottom:8px;}
+  .inv-brand-name{font-size:21px; font-weight:800; color:var(--primary); line-height:1.2;}
+  .inv-brand-tagline{font-size:9.5px; letter-spacing:.14em; color:#7c908c; text-transform:uppercase; margin-top:2px;}
+  .inv-title-block{text-align:right;}
+  .inv-title-block h2{font-size:22px; font-weight:800; color:var(--primary); letter-spacing:.02em;}
+  .inv-title-underline{width:64px; height:3px; background:var(--accent); margin:6px 0 10px auto;}
+  .inv-meta{font-size:11px; color:#3d5450;}
+  .inv-meta div{display:flex; gap:10px; justify-content:flex-end; padding:2px 0;}
+  .inv-meta span{color:#7c908c;}
+  .inv-meta b{color:#0a1f1c;}
+
+  .fb-box{display:flex; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; margin-bottom:20px; overflow:hidden;}
+  .fb-col{flex:1; padding:14px 20px;}
+  .fb-col + .fb-col{border-left:1px solid var(--line);}
+  .fb-label{font-size:10px; font-weight:800; letter-spacing:.08em; color:#5a7f1a; text-transform:uppercase; margin-bottom:6px;}
+  .fb-name{font-weight:700; font-size:13.5px; color:#0a1f1c; margin-bottom:4px;}
+  .fb-detail{font-size:11px; color:#3d5450; line-height:1.6;}
+
+  .inv-table{width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:4px;}
+  .inv-table thead th{background:var(--primary); color:#fff; padding:9px 10px; font-weight:700; text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em;}
+  .inv-table thead th.num{text-align:right;}
+  .inv-table thead th.sno{width:46px;}
+  .inv-table tbody td{padding:10px; border-bottom:1px solid #e3ece3; vertical-align:top;}
+  .inv-table tbody td.num{text-align:right; font-family:"IBM Plex Mono",monospace; white-space:nowrap;}
+  .inv-table tbody td.desc{color:#3d5450; line-height:1.55;}
+
+  .inv-totals-wrap{display:flex; justify-content:flex-end; margin-top:10px;}
+  .inv-totals{width:320px;}
+  .inv-totals-row{display:flex; justify-content:space-between; padding:5px 10px; font-size:12px;}
+  .inv-totals-row .lbl{color:#5c7370;}
+  .inv-totals-row .val{font-weight:700; color:#0a1f1c; font-family:"IBM Plex Mono",monospace;}
+  .inv-totals-row.grand{border-top:2px solid var(--primary); margin-top:4px; padding-top:10px;}
+  .inv-totals-row.grand .lbl{font-weight:800; font-size:13.5px; color:var(--primary);}
+  .inv-totals-row.grand .val{font-weight:800; font-size:13.5px; color:var(--primary);}
+  .inv-advance-banner{display:flex; justify-content:space-between; background:var(--primary); color:#fff; padding:9px 12px; border-radius:6px; margin-top:12px; font-weight:700; font-size:11.5px;}
+  .inv-advance-banner .val{font-family:"IBM Plex Mono",monospace;}
+  .inv-balance-row{display:flex; justify-content:space-between; padding:8px 12px; font-size:11.5px; color:#3d5450;}
+  .inv-balance-row .val{font-weight:700; color:#0a1f1c; font-family:"IBM Plex Mono",monospace;}
+
+  .inv-terms-box{background:var(--surface-2); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:12px 16px; font-size:11.5px; color:#2c3f3c; line-height:1.6; margin:22px 0;}
+  .inv-terms-box b{color:#0a1f1c;}
+
+  .inv-lower{display:flex; gap:24px; margin-bottom:24px;}
+  .inv-lower-box{flex:1;}
+  .inv-lower-label{font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--primary); text-transform:uppercase; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid var(--accent); display:inline-block;}
+  .inv-bank-row{display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:5px 0; border-bottom:1px dotted #cfd9cb; font-size:11px;}
+  .inv-bank-row .lbl{color:#5c7370; white-space:nowrap;}
+  .inv-bank-row .val{font-weight:700; color:#0a1f1c; text-align:right;}
+  .inv-notes-list{font-size:10.8px; color:#3d5450; line-height:1.7; padding-left:18px; margin:0;}
+
+  .inv-sign{border-top:1px solid #d6e0d3; margin-top:8px; padding-top:14px; display:flex; justify-content:space-between; font-size:11px; color:#3d5450;}
+
+  .inv-doc-foot{margin-top:20px; padding-top:12px; border-top:1px solid #e3ece3; font-size:10px; color:#7c908c; text-align:center;}
+
+
   .empty-state{padding:60px 20px; text-align:center; color:var(--muted);}
   .empty-state h3{color:var(--ink); font-size:16px; margin-bottom:8px;}
   .empty-state .btn{margin-top:14px;}
@@ -316,6 +378,14 @@
     .bill-to{flex-direction:column; gap:14px;}
     .bill-to .block:last-child{text-align:left;}
     .paper .lower{flex-direction:column; gap:18px;}
+    .inv-head{flex-direction:column; gap:14px;}
+    .inv-title-block{text-align:left;}
+    .inv-title-underline{margin:6px auto 10px 0;}
+    .inv-meta div{justify-content:flex-start;}
+    .fb-box{flex-direction:column;}
+    .fb-col + .fb-col{border-left:none; border-top:1px solid var(--line);}
+    .inv-lower{flex-direction:column; gap:18px;}
+    .inv-sign{flex-direction:column; gap:10px;}
     .paper .sign{text-align:left;}
     .paper .sign .line{margin:36px 0 5px 0;}
     .doc-toolbar{flex-direction:column; align-items:stretch;}

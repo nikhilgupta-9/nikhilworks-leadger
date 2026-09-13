@@ -15,9 +15,11 @@
   var itemRowCount = 0;
 
   var BUSINESS_DEFAULT = {
-    legalName: "NikhilWorks", gstin: "", pan: "", address: "", state: "Delhi",
+    legalName: "NikhilWorks", tagline: "WEB DEVELOPMENT & SEO", ownerName: "Nikhil Gupta",
+    gstin: "", pan: "", address: "", state: "Delhi",
     email: "", phone: "", website: "",
     bank: { accountName: "", accountNumber: "", ifsc: "", bankName: "", branch: "" },
+    proformaValidityDays: 7,
     taxPrefix: "NW", taxCounter: 1, proformaPrefix: "PF", proformaCounter: 1
   };
 
@@ -42,6 +44,10 @@
   function fmtMoney(n){
     n = Number(n)||0;
     return "₹" + n.toLocaleString("en-IN", {maximumFractionDigits:2, minimumFractionDigits: (n%1!==0)?2:0});
+  }
+  function fmtMoneyDoc(n){
+    n = Number(n)||0;
+    return "₹" + n.toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2});
   }
   function toast(msg){
     var t = $("#toast"); t.textContent = msg; t.classList.add("show");
@@ -406,56 +412,125 @@
     var client = clients[inv.clientId] || {};
     var sameState = (client.state) === (s.state||"Delhi");
     var isTax = inv.type==="tax";
-    $("#invPreviewTitle").textContent = (isTax?"Tax Invoice ":"Proforma Invoice ") + inv.number;
+    $("#invPreviewTitle").textContent = (isTax?"Tax Invoice ":"Proforma Invoice ") + inv.number + (inv.isImported?" (logged)":"");
 
-    var itemsHTML = inv.items.map(function(it){
-      return '<tr><td>'+esc(it.description)+(it.hsn?' <span style="color:#7c908c;">('+esc(it.hsn)+')</span>':'')+'</td>'+
-        '<td class="num">'+it.qty+'</td><td class="num">'+fmtMoney(it.rate)+'</td><td class="num">'+fmtMoney(it.amount)+'</td></tr>';
+    var itemsHTML = inv.items.map(function(it, idx){
+      return '<tr><td class="num">'+(idx+1)+'</td>'+
+        '<td class="desc">'+esc(it.description)+'</td>'+
+        '<td>'+esc(it.hsn||"")+'</td>'+
+        '<td class="num">'+fmtMoneyDoc(it.amount)+'</td></tr>';
     }).join("");
 
     var taxRowsHTML = "";
-    if(isTax){
-      if(sameState){
-        taxRowsHTML = '<tr><td>CGST ('+(inv.gstRate/2)+'%)</td><td class="num">'+fmtMoney(inv.cgst)+'</td></tr>'+
-                      '<tr><td>SGST ('+(inv.gstRate/2)+'%)</td><td class="num">'+fmtMoney(inv.sgst)+'</td></tr>';
-      } else {
-        taxRowsHTML = '<tr><td>IGST ('+inv.gstRate+'%)</td><td class="num">'+fmtMoney(inv.igst)+'</td></tr>';
-      }
+    if(sameState){
+      taxRowsHTML = '<div class="inv-totals-row"><span class="lbl">CGST @ '+(inv.gstRate/2)+'%</span><span class="val">'+fmtMoneyDoc(inv.cgst)+'</span></div>'+
+                    '<div class="inv-totals-row"><span class="lbl">SGST @ '+(inv.gstRate/2)+'%</span><span class="val">'+fmtMoneyDoc(inv.sgst)+'</span></div>';
+    } else {
+      taxRowsHTML = '<div class="inv-totals-row"><span class="lbl">IGST @ '+inv.gstRate+'%</span><span class="val">'+fmtMoneyDoc(inv.igst)+'</span></div>';
     }
 
+    var advanceHTML = "";
+    if(Number(inv.advancePercent) > 0){
+      advanceHTML = '<div class="inv-advance-banner"><span>Advance Payable Now ('+inv.advancePercent+'%)</span><span class="val">'+fmtMoneyDoc(inv.advanceAmount)+'</span></div>'+
+        '<div class="inv-balance-row"><span>Balance (on completion of agreed tasks)</span><span class="val">'+fmtMoneyDoc(inv.balanceAmount)+'</span></div>';
+    }
+
+    var attnLine = client.contactName ? ('Attn: '+esc(client.contactName)+(client.contactTitle?' ('+esc(client.contactTitle)+')':'')+'<br>') : '';
+    var clientGstinLine = client.gstin ? ('GSTIN: '+esc(client.gstin)+'<br>') : '';
+
+    var metaRows = '<div><span>'+(isTax?'Invoice No:':'PI No:')+'</span><b>'+esc(inv.number)+'</b></div>'+
+      '<div><span>Date:</span><b>'+fmtDate(inv.date)+'</b></div>'+
+      (isTax
+        ? (inv.dueDate ? '<div><span>Due:</span><b>'+fmtDate(inv.dueDate)+'</b></div>' : '')
+        : (inv.validTill ? '<div><span>Valid Till:</span><b>'+fmtDate(inv.validTill)+'</b></div>' : ''));
+
+    var termsList = isTax
+      ? [
+          'This is a Tax Invoice issued under GST for services rendered.',
+          'Payment should be made by the due date mentioned above via bank transfer or UPI.',
+          'Please quote the invoice number in all related correspondence.',
+          'GST rate and SAC/HSN code to be reconfirmed with your accountant before filing.'
+        ]
+      : [
+          'This is a Proforma Invoice for advance payment; a Tax Invoice will be issued on receipt.',
+          Number(inv.advancePercent)>0
+            ? 'Work commences on receipt of the '+inv.advancePercent+'% advance payment.'
+            : 'Work commences on receipt of payment as agreed.',
+          Number(inv.advancePercent)>0
+            ? 'Balance '+(100-Number(inv.advancePercent))+'% is due on completion of the agreed tasks/services.'
+            : 'Balance, if any, is due on completion of the agreed tasks/services.',
+          'GST rate and SAC code to be reconfirmed with your accountant before filing.'
+        ];
+
     var html = ''+
-      '<div class="doc-head">'+
-        '<div><img src="'+LOGO_FULL+'" alt="NikhilWorks" class="doc-logo"><div class="addr">'+esc(s.legalName)+'<br>'+esc(s.address)+'<br>'+esc(s.email)+' · '+esc(s.phone)+'</div></div>'+
-        '<div class="doc-title"><h2>'+(isTax?"TAX INVOICE":"PROFORMA INVOICE")+'</h2>'+
-          '<div class="meta">'+
-            '<div><span>No.</span><b>'+esc(inv.number)+'</b></div>'+
-            '<div><span>Date</span><b>'+fmtDate(inv.date)+'</b></div>'+
-            (inv.dueDate?'<div><span>Due</span><b>'+fmtDate(inv.dueDate)+'</b></div>':'')+
-            (isTax?'<div><span>GSTIN</span><b>'+esc(s.gstin)+'</b></div>':'')+
+      '<div class="inv-bar top"></div>'+
+      '<div class="inv-wrap">'+
+        '<div class="inv-head">'+
+          '<div>'+
+            '<div class="nw-badge">NW</div>'+
+            '<div class="inv-brand-name">'+esc(s.legalName)+'</div>'+
+            '<div class="inv-brand-tagline">'+esc(s.tagline)+'</div>'+
+          '</div>'+
+          '<div class="inv-title-block">'+
+            '<h2>'+(isTax?"TAX INVOICE":"PROFORMA INVOICE")+'</h2>'+
+            '<div class="inv-title-underline"></div>'+
+            '<div class="inv-meta">'+metaRows+'</div>'+
           '</div>'+
         '</div>'+
-      '</div>'+
-      (isTax?'':'<div style="text-align:right; font-size:10.5px; color:#b3791d; font-weight:700; margin:-10px 0 14px;">This is a Proforma Invoice — not a demand for payment and not valid for GST input credit.</div>')+
-      '<div class="bill-to">'+
-        '<div class="block"><h4>Billed To</h4><div class="name">'+esc(client.name||inv.clientName||"—")+'</div><div style="color:#3d5450;">'+esc(client.email||"")+(client.phone?' · '+esc(client.phone):'')+'<br>'+esc(client.state||"")+(client.gstin?'<br>GSTIN: '+esc(client.gstin):'')+'</div></div>'+
-        '<div class="block" style="text-align:right;"><h4>Place of Supply</h4><div>'+esc(client.state||inv.placeOfSupply||"—")+'</div>'+(inv.projectTitle?'<div class="muted" style="margin-top:6px; font-size:11px;">'+esc(inv.projectTitle)+'</div>':'')+'</div>'+
-      '</div>'+
-      '<table><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>'+itemsHTML+'</tbody></table>'+
-      '<div class="totals"><table>'+
-        '<tr><td>Subtotal</td><td class="num">'+fmtMoney(inv.subtotal)+'</td></tr>'+
-        taxRowsHTML+
-        '<tr class="grand"><td>Total'+(isTax?' Due':' Amount')+'</td><td class="num">'+fmtMoney(inv.total)+'</td></tr>'+
-      '</table></div>'+
-      '<div class="words">Amount in words: <b>Rupees '+numberToWordsIndian(inv.total)+' Only</b></div>'+
-      '<div class="lower">'+
-        '<div class="bank-box"><h4>Payment Details</h4>'+
-          'A/c Name: '+esc(s.bank.accountName)+'<br>A/c No: '+esc(s.bank.accountNumber)+'<br>IFSC: '+esc(s.bank.ifsc)+'<br>Bank: '+esc(s.bank.bankName)+', '+esc(s.bank.branch)+
-          (isTax?'<br>GSTIN: '+esc(s.gstin)+' · PAN: '+esc(s.pan):'')+
+
+        '<div class="fb-box">'+
+          '<div class="fb-col">'+
+            '<div class="fb-label">From</div>'+
+            '<div class="fb-name">'+esc(s.legalName)+(s.ownerName?' ('+esc(s.ownerName)+')':'')+'</div>'+
+            '<div class="fb-detail">'+esc(s.address)+'<br>GSTIN: '+esc(s.gstin)+'<br>Phone: '+esc(s.phone)+'<br>Email: '+esc(s.email)+'</div>'+
+          '</div>'+
+          '<div class="fb-col">'+
+            '<div class="fb-label">Bill To</div>'+
+            '<div class="fb-name">'+esc(client.name||inv.clientName||"—")+'</div>'+
+            '<div class="fb-detail">'+esc(client.address||"")+(client.address?'<br>':'')+attnLine+
+              (client.phone?('Mob: '+esc(client.phone)+'<br>'):'')+
+              (client.email?('Email: '+esc(client.email)+'<br>'):'')+
+              clientGstinLine+
+            '</div>'+
+          '</div>'+
         '</div>'+
-        '<div class="terms"><h4>Notes</h4>'+esc(inv.notes||"")+'</div>'+
+
+        '<table class="inv-table">'+
+          '<thead><tr><th class="sno">S.No</th><th>Description of Service</th><th>SAC Code</th><th class="num">Amount (₹)</th></tr></thead>'+
+          '<tbody>'+itemsHTML+'</tbody>'+
+        '</table>'+
+
+        '<div class="inv-totals-wrap"><div class="inv-totals">'+
+          '<div class="inv-totals-row"><span class="lbl">Subtotal</span><span class="val">'+fmtMoneyDoc(inv.subtotal)+'</span></div>'+
+          taxRowsHTML+
+          '<div class="inv-totals-row grand"><span class="lbl">'+(isTax?"Total Invoice Value":"Total Project Value")+'</span><span class="val">'+fmtMoneyDoc(inv.total)+'</span></div>'+
+          advanceHTML+
+        '</div></div>'+
+
+        (inv.notes ? '<div class="inv-terms-box"><b>Payment terms:</b> '+esc(inv.notes)+'</div>' : '')+
+
+        '<div class="inv-lower">'+
+          '<div class="inv-lower-box">'+
+            '<div class="inv-lower-label">Bank Details for Payment</div>'+
+            '<div class="inv-bank-row"><span class="lbl">Account Holder</span><span class="val">'+esc(s.bank.accountName)+'</span></div>'+
+            '<div class="inv-bank-row"><span class="lbl">Account Number</span><span class="val">'+esc(s.bank.accountNumber)+'</span></div>'+
+            '<div class="inv-bank-row"><span class="lbl">IFSC Code</span><span class="val">'+esc(s.bank.ifsc)+'</span></div>'+
+            '<div class="inv-bank-row"><span class="lbl">Bank &amp; Branch</span><span class="val">'+esc(s.bank.bankName)+', '+esc(s.bank.branch)+'</span></div>'+
+          '</div>'+
+          '<div class="inv-lower-box">'+
+            '<div class="inv-lower-label">Terms &amp; Notes</div>'+
+            '<ol class="inv-notes-list">'+termsList.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join("")+'</ol>'+
+          '</div>'+
+        '</div>'+
+
+        '<div class="inv-sign">'+
+          '<div>For '+esc(client.name||inv.clientName||"")+'</div>'+
+          '<div>For '+esc(s.legalName)+(s.ownerName?' — '+esc(s.ownerName):'')+'</div>'+
+        '</div>'+
+
+        '<div class="inv-doc-foot">'+esc(s.website)+' | '+esc(s.phone)+' | '+esc(s.email)+' | GSTIN: '+esc(s.gstin)+'</div>'+
       '</div>'+
-      '<div class="sign"><div>For '+esc(s.legalName)+'</div><div class="line"></div><div>Authorised Signatory</div></div>'+
-      '<div class="doc-foot">'+esc(s.legalName)+' · '+esc(s.website)+' · Generated via NikhilWorks Ledger</div>';
+      '<div class="inv-bar bottom"></div>';
     $("#printArea").innerHTML = html;
     showView("invoice-preview");
   }
@@ -507,6 +582,10 @@
     var html = ''+
       '<div class="field"><label>Legal business name</label><input id="sName" value="'+esc(s.legalName)+'"></div>'+
       '<div class="grid2">'+
+        '<div class="field"><label>Tagline (printed under business name)</label><input id="sTagline" value="'+esc(s.tagline)+'"></div>'+
+        '<div class="field"><label>Signatory name (printed on invoices)</label><input id="sOwnerName" value="'+esc(s.ownerName)+'"></div>'+
+      '</div>'+
+      '<div class="grid2">'+
         '<div class="field"><label>GSTIN</label><input id="sGstin" value="'+esc(s.gstin)+'"></div>'+
         '<div class="field"><label>PAN</label><input id="sPan" value="'+esc(s.pan)+'"></div>'+
       '</div>'+
@@ -537,6 +616,8 @@
         '<div class="field"><label>Tax invoice prefix / next no.</label><div style="display:flex; gap:8px;"><input id="sTaxPrefix" value="'+esc(s.taxPrefix)+'" style="width:70px;"><input id="sTaxCounter" type="number" value="'+esc(s.taxCounter)+'"></div></div>'+
         '<div class="field"><label>Proforma prefix / next no.</label><div style="display:flex; gap:8px;"><input id="sProPrefix" value="'+esc(s.proformaPrefix)+'" style="width:70px;"><input id="sProCounter" type="number" value="'+esc(s.proformaCounter)+'"></div></div>'+
       '</div>'+
+      '<div class="field"><label>Proforma Invoice validity (days, printed as "Valid Till")</label><input type="number" id="sValidityDays" value="'+esc(s.proformaValidityDays)+'" style="max-width:120px;"></div>'+
+      '</div>'+
       '<button class="btn btn-accent" data-action="save-settings" style="margin-top:6px;">Save Settings</button>';
     $("#settingsForm").innerHTML = html;
   }
@@ -555,6 +636,8 @@
     $("#cName").value = c ? c.name : "";
     $("#cPhone").value = c ? (c.phone||"") : "";
     $("#cEmail").value = c ? (c.email||"") : "";
+    $("#cContactName").value = c ? (c.contactName||"") : "";
+    $("#cContactTitle").value = c ? (c.contactTitle||"") : "";
     $("#cGstin").value = c ? (c.gstin||"") : "";
     $("#cAddress").value = c ? (c.address||"") : "";
     $("#cState").value = c ? (c.state||"Delhi") : "Delhi";
@@ -635,10 +718,9 @@
     wrap.className = "item-row";
     wrap.dataset.row = itemRowCount;
     wrap.innerHTML =
-      '<div class="field" style="margin:0;"><label>Description</label><input class="it-desc" value="'+esc(prefill&&prefill.description||"")+'" placeholder="e.g. Website design & development"></div>'+
-      '<div class="field" style="margin:0;"><label>HSN/SAC</label><input class="it-hsn" value="'+esc(prefill&&prefill.hsn||"998314")+'"></div>'+
-      '<div class="field" style="margin:0;"><label>Qty</label><input class="it-qty" type="number" value="'+(prefill?prefill.qty:1)+'"></div>'+
-      '<div class="field" style="margin:0;"><label>Rate (₹)</label><input class="it-rate" type="number" value="'+(prefill?prefill.rate:"")+'"></div>'+
+      '<div class="field" style="margin:0;"><label>Description of Service</label><input class="it-desc" value="'+esc(prefill&&prefill.description||"")+'" placeholder="e.g. Website Redesign, SEO & Social Media Reels"></div>'+
+      '<div class="field" style="margin:0;"><label>SAC/HSN Code</label><input class="it-hsn" value="'+esc(prefill&&prefill.hsn||"998314")+'"></div>'+
+      '<div class="field" style="margin:0;"><label>Amount (₹)</label><input class="it-amount" type="number" value="'+(prefill?prefill.amount:"")+'"></div>'+
       '<button type="button" class="rm" title="Remove">×</button>';
     wrap.querySelector(".rm").addEventListener("click", function(){ wrap.remove(); });
     $("#itemRows").appendChild(wrap);
@@ -658,10 +740,16 @@
     $("#itemRows").innerHTML = ""; itemRowCount = 0;
     if(p){
       $("#iGstRate").value = p.gstRate || 18;
-      addItemRow({description: p.title, qty:1, rate: p.totalAmount||""});
+      addItemRow({description: p.title, amount: p.totalAmount||""});
     } else {
       addItemRow(null);
     }
+  }
+
+  function toggleImportFields(){
+    var on = $("#iIsImport").checked;
+    $("#iNumberField").style.display = on ? "" : "none";
+    $("#invoiceModalTitle").textContent = on ? "Log an Already-Issued Invoice" : "New Invoice";
   }
 
   function openInvoiceModal(clientId, projectId, type){
@@ -671,6 +759,10 @@
     $("#iType").value = type || "proforma";
     $("#iDate").value = todayISO();
     $("#iDue").value = "";
+    $("#iAdvancePercent").value = "";
+    $("#iIsImport").checked = false;
+    $("#iNumber").value = "";
+    toggleImportFields();
     fillItemsFromProject(projectId || null);
     updatePlaceOfSupply();
     $("#iClient").onchange = function(){
@@ -679,6 +771,7 @@
       updatePlaceOfSupply();
     };
     $("#iProject").onchange = function(){ fillItemsFromProject($("#iProject").value || null); };
+    $("#iIsImport").onchange = toggleImportFields;
     openModal("invoiceModalBackdrop");
   }
   function updatePlaceOfSupply(){
@@ -745,8 +838,8 @@
 
   function mapClientRow(r){
     return {
-      name: r.name, phone: r.phone, email: r.email, gstin: r.gstin, address: r.address,
-      state: r.state, notes: r.notes, createdAt: r.created_at
+      name: r.name, phone: r.phone, email: r.email, contactName: r.contact_name, contactTitle: r.contact_title,
+      gstin: r.gstin, address: r.address, state: r.state, notes: r.notes, createdAt: r.created_at
     };
   }
   function mapProjectRow(r){
@@ -763,16 +856,18 @@
     return {
       clientId: String(r.client_id), projectId: r.project_id!=null? String(r.project_id): null,
       clientName: r.client_name, projectTitle: r.project_title, type: r.type, number: r.number,
-      date: r.invoice_date, dueDate: r.due_date, items: r.items,
+      date: r.invoice_date, dueDate: r.due_date, validTill: r.valid_till, items: r.items,
       subtotal: r.subtotal, gstRate: r.gst_rate, cgst: r.cgst, sgst: r.sgst, igst: r.igst, total: r.total,
-      notes: r.notes, placeOfSupply: r.place_of_supply
+      advancePercent: r.advance_percent, advanceAmount: r.advance_amount, balanceAmount: r.balance_amount,
+      notes: r.notes, placeOfSupply: r.place_of_supply, isImported: !!r.is_imported
     };
   }
   function mapSettingsRow(r){
     return {
-      legalName: r.legal_name, gstin: r.gstin, pan: r.pan, address: r.address, state: r.state,
+      legalName: r.legal_name, tagline: r.tagline, ownerName: r.owner_name, gstin: r.gstin, pan: r.pan, address: r.address, state: r.state,
       email: r.email, phone: r.phone, website: r.website,
       bank: { accountName: r.bank_account_name, accountNumber: r.bank_account_number, ifsc: r.bank_ifsc, bankName: r.bank_name, branch: r.bank_branch },
+      proformaValidityDays: r.proforma_validity_days,
       taxPrefix: r.tax_prefix, taxCounter: r.tax_counter, proformaPrefix: r.proforma_prefix, proformaCounter: r.proforma_counter
     };
   }
@@ -834,6 +929,8 @@
       name: name,
       phone: $("#cPhone").value.trim(),
       email: $("#cEmail").value.trim(),
+      contact_name: $("#cContactName").value.trim(),
+      contact_title: $("#cContactTitle").value.trim(),
       gstin: $("#cGstin").value.trim(),
       address: $("#cAddress").value.trim(),
       state: $("#cState").value,
@@ -898,35 +995,44 @@
     if(!clientId || !clients[clientId]){ toast("Pick a client first"); return; }
     var projectId = $("#iProject").value || null;
     var type = $("#iType").value;
+    var isImport = $("#iIsImport").checked;
     var rows = $all("#itemRows .item-row");
     var items = rows.map(function(r){
-      var qty = Number(r.querySelector(".it-qty").value)||0;
-      var rate = Number(r.querySelector(".it-rate").value)||0;
-      return { description: r.querySelector(".it-desc").value.trim(), hsn: r.querySelector(".it-hsn").value.trim(), qty:qty, rate:rate };
+      var amount = Number(r.querySelector(".it-amount").value)||0;
+      return { description: r.querySelector(".it-desc").value.trim(), hsn: r.querySelector(".it-hsn").value.trim(), qty:1, rate:amount };
     }).filter(function(it){ return it.description; });
     if(!items.length){ toast("Add at least one line item"); return; }
 
     var payload = {
-      op: "create", client_id: Number(clientId), project_id: projectId?Number(projectId):null, type: type,
+      op: isImport ? "import" : "create",
+      client_id: Number(clientId), project_id: projectId?Number(projectId):null, type: type,
       date: $("#iDate").value||todayISO(), due_date: $("#iDue").value||"",
       items: items, gst_rate: Number($("#iGstRate").value)||0,
+      advance_percent: Number($("#iAdvancePercent").value)||0,
       notes: $("#iNotes").value.trim()
     };
+    if(isImport){
+      var number = $("#iNumber").value.trim();
+      if(!number){ toast("Enter the invoice number exactly as it was issued"); return; }
+      payload.number = number;
+    }
     api("api/invoices.php", {method:"POST", body: JSON.stringify(payload)})
       .then(function(result){
-        closeModals(); toast("Invoice "+result.number+" generated");
+        closeModals(); toast("Invoice "+result.number+(isImport?" logged":" generated"));
         return refreshAndRender().then(function(){ renderInvoicePreview(String(result.id)); });
       })
-      .catch(function(err){ toast("Couldn't generate: "+err.message); });
+      .catch(function(err){ toast("Couldn't save: "+err.message); });
   }
 
   function saveSettings(){
     var payload = {
-      legal_name: $("#sName").value.trim(), gstin: $("#sGstin").value.trim(), pan: $("#sPan").value.trim(),
+      legal_name: $("#sName").value.trim(), tagline: $("#sTagline").value.trim(), owner_name: $("#sOwnerName").value.trim(),
+      gstin: $("#sGstin").value.trim(), pan: $("#sPan").value.trim(),
       address: $("#sAddress").value.trim(), email: $("#sEmail").value.trim(), phone: $("#sPhone").value.trim(),
       website: $("#sWebsite").value.trim(),
       bank_account_name: $("#sBankName").value.trim(), bank_account_number: $("#sBankAcc").value.trim(),
       bank_ifsc: $("#sBankIfsc").value.trim(), bank_name: $("#sBankBranch").value.trim(), bank_branch: "",
+      proforma_validity_days: Number($("#sValidityDays").value)||7,
       tax_prefix: $("#sTaxPrefix").value.trim()||"NW", tax_counter: Number($("#sTaxCounter").value)||1,
       proforma_prefix: $("#sProPrefix").value.trim()||"PF", proforma_counter: Number($("#sProCounter").value)||1,
       state: $("#sState").value || "Delhi"

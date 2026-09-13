@@ -166,6 +166,10 @@
         <div class="field"><label>Contact email</label><input id="cEmail" placeholder="name@client.com"></div>
       </div>
       <div class="grid2">
+        <div class="field"><label>Contact person name (optional)</label><input id="cContactName" placeholder="e.g. Falak Ziya"></div>
+        <div class="field"><label>Contact person title (optional)</label><input id="cContactTitle" placeholder="e.g. Operations Manager"></div>
+      </div>
+      <div class="grid2">
         <div class="field"><label>Client GSTIN (optional)</label><input id="cGstin" placeholder="e.g. 07XXXXX0000X1ZH"></div>
         <div class="field"><label>Client state (for GST)</label>
           <select id="cState">
@@ -259,8 +263,11 @@
 <!-- Invoice builder modal -->
 <div class="modal-backdrop" id="invoiceModalBackdrop">
   <div class="modal wide">
-    <div class="modal-head"><h3>New Invoice</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-head"><h3 id="invoiceModalTitle">New Invoice</h3><button class="modal-close" data-action="close-modal">×</button></div>
     <div class="modal-body">
+      <label class="check-row"><input type="checkbox" id="iIsImport"> This invoice was already issued outside the app — I just want to log it here</label>
+      <div class="field" id="iNumberField" style="display:none;"><label>Invoice number (exactly as issued)</label><input id="iNumber" placeholder="e.g. NW/2026-27/001"></div>
+
       <div class="grid3">
         <div class="field"><label>Client</label><select id="iClient"></select></div>
         <div class="field"><label>Project (optional)</label><select id="iProject"><option value="">— Custom / no project —</option></select></div>
@@ -268,7 +275,7 @@
       </div>
       <div class="grid2">
         <div class="field"><label>Invoice date</label><input type="date" id="iDate"></div>
-        <div class="field"><label>Due date (optional)</label><input type="date" id="iDue"></div>
+        <div class="field"><label>Due date (optional, Tax Invoice)</label><input type="date" id="iDue"></div>
       </div>
 
       <div class="field">
@@ -277,11 +284,12 @@
         <button class="btn btn-ghost btn-sm" data-action="add-item" type="button">+ Add line item</button>
       </div>
 
-      <div class="grid2">
+      <div class="grid3">
         <div class="field"><label>GST rate (%) — used only for Tax Invoice</label><input type="number" id="iGstRate" value="18"></div>
         <div class="field"><label>Place of supply</label><input id="iPlace" readonly></div>
+        <div class="field"><label>Advance % (optional, e.g. 50)</label><input type="number" id="iAdvancePercent" placeholder="Leave blank if not applicable"></div>
       </div>
-      <div class="field"><label>Notes / Terms</label><textarea id="iNotes">Payment due within 7 days of invoice date via bank transfer or UPI. Late payments may attract additional charges.</textarea></div>
+      <div class="field"><label>Payment terms (printed above bank details)</label><textarea id="iNotes">Payment due within 7 days of invoice date via bank transfer or UPI. Late payments may attract additional charges.</textarea></div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-invoice">Generate Invoice</button></div>
   </div>

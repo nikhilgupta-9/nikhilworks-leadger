@@ -9,7 +9,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
   $row = $pdo->query("SELECT * FROM settings WHERE id=1")->fetch();
   if (!$row) json_error('Settings row missing — re-import schema.sql.', 500);
-  foreach (['tax_counter','proforma_counter'] as $f) $row[$f] = (int)$row[$f];
+  foreach (['tax_counter','proforma_counter','proforma_validity_days'] as $f) $row[$f] = (int)$row[$f];
   json_out(['settings' => $row]);
 }
 
@@ -18,6 +18,8 @@ if ($method === 'POST') {
   $body = json_body();
   $fields = [
     'legal_name' => str_field($body, 'legal_name'),
+    'tagline' => str_field($body, 'tagline', 'WEB DEVELOPMENT & SEO'),
+    'owner_name' => str_field($body, 'owner_name'),
     'gstin' => str_field($body, 'gstin'),
     'pan' => str_field($body, 'pan'),
     'address' => str_field($body, 'address'),
@@ -30,6 +32,7 @@ if ($method === 'POST') {
     'bank_ifsc' => str_field($body, 'bank_ifsc'),
     'bank_name' => str_field($body, 'bank_name'),
     'bank_branch' => str_field($body, 'bank_branch'),
+    'proforma_validity_days' => int_field($body, 'proforma_validity_days', 7),
     'tax_prefix' => str_field($body, 'tax_prefix', 'NW'),
     'tax_counter' => int_field($body, 'tax_counter', 1),
     'proforma_prefix' => str_field($body, 'proforma_prefix', 'PF'),
@@ -41,10 +44,11 @@ if ($method === 'POST') {
   // one already issued. Deliberately jumping the sequence ahead still works
   // since GREATEST() keeps whichever value is higher.
   $stmt = $pdo->prepare("UPDATE settings SET
-    legal_name=:legal_name, gstin=:gstin, pan=:pan, address=:address, state=:state,
+    legal_name=:legal_name, tagline=:tagline, owner_name=:owner_name, gstin=:gstin, pan=:pan, address=:address, state=:state,
     email=:email, phone=:phone, website=:website,
     bank_account_name=:bank_account_name, bank_account_number=:bank_account_number,
     bank_ifsc=:bank_ifsc, bank_name=:bank_name, bank_branch=:bank_branch,
+    proforma_validity_days=:proforma_validity_days,
     tax_prefix=:tax_prefix, tax_counter=GREATEST(tax_counter, :tax_counter),
     proforma_prefix=:proforma_prefix, proforma_counter=GREATEST(proforma_counter, :proforma_counter)
     WHERE id=1");

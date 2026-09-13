@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
 CREATE TABLE IF NOT EXISTS settings (
   id TINYINT PRIMARY KEY DEFAULT 1,
   legal_name VARCHAR(190) NOT NULL DEFAULT '',
+  tagline VARCHAR(190) NOT NULL DEFAULT 'WEB DEVELOPMENT & SEO',
+  owner_name VARCHAR(190) NOT NULL DEFAULT 'Nikhil Gupta',
   gstin VARCHAR(20) NOT NULL DEFAULT '',
   pan VARCHAR(15) NOT NULL DEFAULT '',
   address VARCHAR(255) NOT NULL DEFAULT '',
@@ -31,6 +33,7 @@ CREATE TABLE IF NOT EXISTS settings (
   bank_ifsc VARCHAR(20) NOT NULL DEFAULT '',
   bank_name VARCHAR(190) NOT NULL DEFAULT '',
   bank_branch VARCHAR(190) NOT NULL DEFAULT '',
+  proforma_validity_days INT NOT NULL DEFAULT 7,
   tax_prefix VARCHAR(10) NOT NULL DEFAULT 'NW',
   tax_counter INT NOT NULL DEFAULT 1,
   proforma_prefix VARCHAR(10) NOT NULL DEFAULT 'PF',
@@ -45,6 +48,8 @@ CREATE TABLE IF NOT EXISTS clients (
   name VARCHAR(190) NOT NULL,
   phone VARCHAR(40) NOT NULL DEFAULT '',
   email VARCHAR(190) NOT NULL DEFAULT '',
+  contact_name VARCHAR(190) NOT NULL DEFAULT '',
+  contact_title VARCHAR(190) NOT NULL DEFAULT '',
   gstin VARCHAR(20) NOT NULL DEFAULT '',
   address VARCHAR(255) NOT NULL DEFAULT '',
   state VARCHAR(60) NOT NULL DEFAULT 'Delhi',
@@ -118,6 +123,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   number VARCHAR(40) NOT NULL,
   invoice_date DATE NOT NULL,
   due_date DATE NULL,
+  valid_till DATE NULL,
   items JSON NOT NULL,
   subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
   gst_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
@@ -125,8 +131,12 @@ CREATE TABLE IF NOT EXISTS invoices (
   sgst DECIMAL(12,2) NOT NULL DEFAULT 0,
   igst DECIMAL(12,2) NOT NULL DEFAULT 0,
   total DECIMAL(12,2) NOT NULL DEFAULT 0,
+  advance_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  advance_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  balance_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
   notes TEXT NULL,
   place_of_supply VARCHAR(60) NOT NULL DEFAULT '',
+  is_imported TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_invoices_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
   CONSTRAINT fk_invoices_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
@@ -135,11 +145,11 @@ CREATE TABLE IF NOT EXISTS invoices (
 
 -- Seed the single settings row with NikhilWorks' business details.
 -- Edit these values any time from the app's Settings page after install.
-INSERT INTO settings (id, legal_name, gstin, pan, address, state, email, phone, website,
+INSERT INTO settings (id, legal_name, tagline, owner_name, gstin, pan, address, state, email, phone, website,
   bank_account_name, bank_account_number, bank_ifsc, bank_name, bank_branch,
-  tax_prefix, tax_counter, proforma_prefix, proforma_counter)
-VALUES (1, 'NikhilWorks', '07DEUPG7632R1ZH', 'DEUPG7632R', 'A-42, B-58, Rama Road, New Delhi – 110015', 'Delhi',
+  proforma_validity_days, tax_prefix, tax_counter, proforma_prefix, proforma_counter)
+VALUES (1, 'NikhilWorks', 'WEB DEVELOPMENT & SEO', 'Nikhil Gupta', '07DEUPG7632R1ZH', 'DEUPG7632R', 'A-42, B-58, Rama Road, New Delhi – 110015', 'Delhi',
   'contact@nikhilworks.com', '+91-8368552640', 'nikhilworks.com',
   'Nikhil Gupta', '188368552640', 'INDB0002234', 'IndusInd Bank', 'DLF Tower, Moti Nagar, Delhi',
-  'NW', 1, 'PF', 1)
+  7, 'NW', 1, 'PF', 1)
 ON DUPLICATE KEY UPDATE id = id;
