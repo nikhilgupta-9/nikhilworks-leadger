@@ -101,6 +101,9 @@
   .topbar{display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap;}
   .topbar h1{font-size:22px;}
   .topbar .sub{color:var(--muted); font-size:13px; margin-top:3px;}
+  .toolbar-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .month-picker{display:flex; align-items:center; gap:7px; color:var(--muted); font-size:12px; font-weight:700;}
+  .month-picker input{width:auto; padding:7px 9px;}
   .btn{
     display:inline-flex; align-items:center; gap:7px; border:1px solid transparent;
     padding:9px 15px; border-radius:10px; font-weight:700; font-size:13px; white-space:nowrap;
@@ -362,6 +365,7 @@
     .sidebar .foot{display:none;}
     main{padding:16px 14px calc(76px + env(safe-area-inset-bottom));}
     .topbar{gap:10px;}
+    .toolbar-actions{width:100%; justify-content:space-between;}
     .topbar h1{font-size:19px;}
     .stat-row{grid-template-columns:1fr 1fr; gap:10px;}
     .stat{padding:14px;}

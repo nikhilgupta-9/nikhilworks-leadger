@@ -17,6 +17,7 @@
       <button data-view="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 15h10M7 18h6"/></svg>Projects</button>
       <button data-view="invoices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h6M9 16h6M9 8h3"/></svg>Invoices</button>
       <button data-view="outsourcing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/></svg>Outsourcing</button>
+      <button data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Cash Flow</button>
       <button data-view="letterhead"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18l-3-2-2.5 2-2.5-2-2.5 2L7 19l-3 2z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Letterhead</button>
       <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.7 7.7 0 000-2l2-1.5-2-3.4-2.3.9a7.6 7.6 0 00-1.7-1L15 3h-4l-.4 2.4a7.6 7.6 0 00-1.7 1l-2.3-.9-2 3.4L6.6 11a7.7 7.7 0 000 2l-2 1.5 2 3.4 2.3-.9c.5.4 1.1.7 1.7 1L11 21h4l.4-2.4c.6-.3 1.2-.6 1.7-1l2.3.9 2-3.4z"/></svg>Settings</button>
     </nav>
@@ -137,6 +138,28 @@
       </div>
     </section>
 
+    <!-- CASH FLOW -->
+    <section class="view" data-view="cashflow">
+      <div class="topbar">
+        <div><h1>Cash Flow</h1><div class="sub">Track monthly business income and outgoing money</div></div>
+        <div class="toolbar-actions">
+          <label class="month-picker">Month <input type="month" id="cashMonth"></label>
+          <button class="btn btn-accent" data-action="new-cash-entry">+ Add Entry</button>
+        </div>
+      </div>
+      <div class="stat-row stat-row-3">
+        <div class="card stat"><div class="label">Income</div><div class="value num" id="cashIncome">–</div><div class="delta" id="cashIncomeSub"></div></div>
+        <div class="card stat"><div class="label">Outgoing</div><div class="value num" id="cashExpense">–</div><div class="delta" id="cashExpenseSub"></div></div>
+        <div class="card stat"><div class="label">Net Cash Flow</div><div class="value num" id="cashNet">–</div><div class="delta" id="cashNetSub"></div></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Entry</th><th>Category</th><th>Type</th><th>Plan</th><th>Note</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="cashEntriesBody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <!-- LETTERHEAD -->
     <section class="view" data-view="letterhead">
       <div class="topbar">
@@ -152,6 +175,27 @@
       <div class="card" style="max-width:640px; padding:24px;" id="settingsForm">Loading…</div>
     </section>
   </main>
+</div>
+
+<!-- Cash entry modal -->
+<div class="modal-backdrop" id="cashEntryModalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>Add Cash Flow Entry</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label>Type</label><select id="ceType"><option value="income">Income / Incoming</option><option value="expense">Expense / Outgoing</option></select></div>
+        <div class="field"><label>Planned status</label><select id="cePlanStatus"><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></div>
+      </div>
+      <div class="field"><label>Title</label><input id="ceTitle" placeholder="e.g. Client payment, office rent, software subscription"></div>
+      <div class="grid2">
+        <div class="field"><label>Amount (₹)</label><input type="number" min="0" step="0.01" id="ceAmount" placeholder="5000"></div>
+        <div class="field"><label>Date</label><input type="date" id="ceDate"></div>
+      </div>
+      <div class="field"><label>Category / tag (optional)</label><input id="ceCategory" placeholder="e.g. Sales, Salary, Marketing, Office"></div>
+      <div class="field"><label>Note (optional)</label><textarea id="ceNote" placeholder="Extra details"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-cash-entry">Save Entry</button></div>
+  </div>
 </div>
 
 <!-- Client modal -->

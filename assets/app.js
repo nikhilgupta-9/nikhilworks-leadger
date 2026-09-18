@@ -8,6 +8,7 @@
   var projects = {};         // projectId(string) -> data (includes client_id)
   var projectPayments = {};  // projectId(string) -> [payments] (client -> you)
   var vendorPayments = {};   // projectId(string) -> [vendor payments] (you -> vendor)
+  var cashEntries = [];      // General business income / expense entries
   var invoices = {};         // id(string) -> data
   var settings = null;
   var currentClientId = null;
@@ -28,6 +29,7 @@
   function $all(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
   function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function currentMonthISO(){ return todayISO().slice(0,7); }
   function fmtDate(iso){
     if(!iso) return "—";
     var d = new Date(iso+"T00:00:00");
@@ -117,6 +119,7 @@
       if(v==="letterhead") renderLetterhead();
       if(v==="settings") renderSettings();
       if(v==="outsourcing") renderOutsourcing();
+      if(v==="cashflow") renderCashflow();
       if(v==="projects") renderProjectsList();
     });
   });
@@ -130,6 +133,7 @@
     if(currentProjectId && projects[currentProjectId]) renderProjectDetail(currentProjectId);
     else if(currentClientId && clients[currentClientId]) renderClientDetail(currentClientId);
     if($('.view[data-view="outsourcing"]').classList.contains("active")) renderOutsourcing();
+    if($('.view[data-view="cashflow"]').classList.contains("active")) renderCashflow();
   }
 
   function renderDashboard(){
@@ -560,6 +564,68 @@
     }).join("");
   }
 
+  // ---------------- Rendering: Cash Flow ----------------
+  function cashTypePill(type){
+    return type === "income"
+      ? '<span class="pill pill-success"><span class="pill-dot"></span>Income</span>'
+      : '<span class="pill pill-danger"><span class="pill-dot"></span>Expense</span>';
+  }
+  function planStatusPill(status){
+    return status === "unplanned"
+      ? '<span class="pill pill-warning"><span class="pill-dot"></span>Unplanned</span>'
+      : '<span class="pill pill-muted"><span class="pill-dot"></span>Planned</span>';
+  }
+  function renderCashflow(){
+    var monthInput = $("#cashMonth");
+    if(!monthInput) return;
+    if(!monthInput.value) monthInput.value = currentMonthISO();
+    var selectedMonth = monthInput.value;
+    var list = cashEntries.filter(function(entry){ return entry.month === selectedMonth; });
+    var income = 0, expense = 0, planned = 0, unplanned = 0;
+    list.forEach(function(entry){
+      if(entry.entryType === "income") income += entry.amount;
+      else expense += entry.amount;
+      if(entry.planStatus === "planned") planned += entry.amount; else unplanned += entry.amount;
+    });
+    var net = income - expense;
+    $("#cashIncome").textContent = fmtMoney(income);
+    $("#cashIncomeSub").textContent = list.filter(function(e){ return e.entryType === "income"; }).length + " income entr" + (list.filter(function(e){ return e.entryType === "income"; }).length === 1 ? "y" : "ies");
+    $("#cashExpense").textContent = fmtMoney(expense);
+    $("#cashExpenseSub").textContent = fmtMoney(unplanned) + " unplanned";
+    $("#cashNet").textContent = fmtMoney(net);
+    $("#cashNet").style.color = net < 0 ? "var(--danger)" : "var(--success)";
+    $("#cashNetSub").textContent = fmtMonth(selectedMonth) + " · " + fmtMoney(planned) + " planned";
+
+    var body = $("#cashEntriesBody");
+    if(!list.length){
+      body.innerHTML = '<tr class="empty-row"><td colspan="8">No cash-flow entries for '+esc(fmtMonth(selectedMonth))+'. Add your first entry.</td></tr>';
+      return;
+    }
+    body.innerHTML = list.map(function(entry){
+      return '<tr>'+
+        '<td>'+fmtDate(entry.date)+'</td>'+
+        '<td class="name-cell">'+esc(entry.title)+'</td>'+
+        '<td>'+esc(entry.category || "—")+'</td>'+
+        '<td>'+cashTypePill(entry.entryType)+'</td>'+
+        '<td>'+planStatusPill(entry.planStatus)+'</td>'+
+        '<td class="muted">'+esc(entry.note || "—")+'</td>'+
+        '<td class="num" style="font-weight:700; color:'+(entry.entryType === "income" ? "var(--success)" : "var(--danger)")+';">'+(entry.entryType === "income" ? "+" : "−")+fmtMoney(entry.amount)+'</td>'+
+        '<td><button class="icon-btn" title="Delete entry" data-action="delete-cash-entry" data-id="'+entry.id+'">×</button></td>'+
+      '</tr>';
+    }).join("");
+  }
+
+  function openCashEntryModal(){
+    $("#ceType").value = "income";
+    $("#cePlanStatus").value = "planned";
+    $("#ceTitle").value = "";
+    $("#ceAmount").value = "";
+    $("#ceDate").value = todayISO();
+    $("#ceCategory").value = "";
+    $("#ceNote").value = "";
+    openModal("cashEntryModalBackdrop");
+  }
+
   // ---------------- Letterhead ----------------
   var letterDraft = "";
   function renderLetterhead(){
@@ -809,6 +875,9 @@
     else if(action==="invoice-for-client") openInvoiceModal(t.getAttribute("data-id"), null);
     else if(action==="invoice-for-project") openInvoiceModal(t.getAttribute("data-client-id"), t.getAttribute("data-project-id"), t.getAttribute("data-invoice-type"));
     else if(action==="new-invoice") openInvoiceModal(null, null);
+    else if(action==="new-cash-entry") openCashEntryModal();
+    else if(action==="save-cash-entry") saveCashEntry();
+    else if(action==="delete-cash-entry") deleteCashEntry(t.getAttribute("data-id"));
     else if(action==="add-item") addItemRow();
     else if(action==="save-invoice") saveInvoice();
     else if(action==="save-settings") saveSettings();
@@ -862,6 +931,11 @@
       notes: r.notes, placeOfSupply: r.place_of_supply, isImported: !!r.is_imported
     };
   }
+  function mapCashEntryRow(r){
+    return { id: r.id, entryType: r.entry_type, title: r.title, category: r.category,
+      amount: Number(r.amount)||0, date: r.entry_date, month: r.month,
+      planStatus: r.plan_status, note: r.note };
+  }
   function mapSettingsRow(r){
     return {
       legalName: r.legal_name, tagline: r.tagline, ownerName: r.owner_name, gstin: r.gstin, pan: r.pan, address: r.address, state: r.state,
@@ -879,10 +953,11 @@
       api("api/payments.php"),
       api("api/vendor_payments.php"),
       api("api/invoices.php"),
-      api("api/settings.php")
+      api("api/settings.php"),
+      api("api/cash_entries.php")
     ]).then(function(results){
       var clientsRes = results[0], projectsRes = results[1], paymentsRes = results[2],
-          vendorPaymentsRes = results[3], invoicesRes = results[4], settingsRes = results[5];
+          vendorPaymentsRes = results[3], invoicesRes = results[4], settingsRes = results[5], cashEntriesRes = results[6];
 
       clients = {};
       (clientsRes.clients||[]).forEach(function(r){ clients[String(r.id)] = mapClientRow(r); });
@@ -908,6 +983,7 @@
       (invoicesRes.invoices||[]).forEach(function(r){ invoices[String(r.id)] = mapInvoiceRow(r); });
 
       settings = settingsRes.settings ? mapSettingsRow(settingsRes.settings) : BUSINESS_DEFAULT;
+      cashEntries = (cashEntriesRes.entries||[]).map(mapCashEntryRow);
     });
   }
 
@@ -990,6 +1066,28 @@
       .catch(function(err){ toast("Couldn't save: "+err.message); });
   }
 
+  function saveCashEntry(){
+    var title = $("#ceTitle").value.trim();
+    var amount = Number($("#ceAmount").value);
+    if(!title){ toast("Entry title is required"); return; }
+    if(!amount || amount <= 0){ toast("Enter a valid amount"); return; }
+    var payload = {
+      op: "create", entry_type: $("#ceType").value, title: title, amount: amount,
+      entry_date: $("#ceDate").value || todayISO(), category: $("#ceCategory").value.trim(),
+      plan_status: $("#cePlanStatus").value, note: $("#ceNote").value.trim()
+    };
+    api("api/cash_entries.php", {method:"POST", body: JSON.stringify(payload)})
+      .then(function(){ toast("Cash-flow entry saved"); closeModals(); return refreshAndRender(); })
+      .catch(function(err){ toast("Couldn't save: "+err.message); });
+  }
+
+  function deleteCashEntry(id){
+    if(!id || !window.confirm("Delete this cash-flow entry?")) return;
+    api("api/cash_entries.php", {method:"POST", body: JSON.stringify({op:"delete", id:Number(id)})})
+      .then(function(){ toast("Entry deleted"); return refreshAndRender(); })
+      .catch(function(err){ toast("Couldn't delete: "+err.message); });
+  }
+
   function saveInvoice(){
     var clientId = $("#iClient").value;
     if(!clientId || !clients[clientId]){ toast("Pick a client first"); return; }
@@ -1053,6 +1151,8 @@
   // ---------------- Init ----------------
   function init(){
     renderFoot();
+    $("#cashMonth").value = currentMonthISO();
+    $("#cashMonth").addEventListener("change", renderCashflow);
     loadAll().then(function(){
       renderAll();
     }).catch(function(err){

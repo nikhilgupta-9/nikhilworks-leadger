@@ -24,6 +24,9 @@ This guide assumes no prior server experience. Follow the steps in order.
 >   person, business tagline/signatory name, Proforma validity days, and
 >   per-invoice advance/balance split. Safe to run even if you're already
 >   on v2.
+> - `migrations/v3_to_v4.sql` — adds the Cash Flow tracker for monthly
+>   income and outgoing entries, including planned/unplanned tags and an
+>   optional category. It does not change any existing records.
 
 ---
 
@@ -84,9 +87,9 @@ database password and internal files from being viewable in a browser.
 3. Click the **Import** tab.
 4. Click **Choose File**, select `schema.sql` from this package, then
    click **Go** at the bottom.
-5. You should see a success message and seven new tables listed on the
+5. You should see a success message and eight new tables listed on the
    left: `admin_users`, `clients`, `projects`, `payments`, `vendor_payments`,
-   `invoices`, `settings`.
+   `cash_entries`, `invoices`, `settings`.
 
 This also pre-fills your business details (Nikhil Works, GSTIN, PAN, bank
 details, invoice numbering) into the `settings` table — you can review or
@@ -165,6 +168,11 @@ created, and you're in. From there:
 - **Outsourcing** — a dedicated tab listing every outsourced project
   across all clients, with vendor cost, what you've paid them, and what's
   still owed.
+- **Cash Flow** — a separate monthly view for all income and outgoing
+  money, even when it is not tied to a client project. Add a category such
+  as Sales, Salary, Marketing or Office, and mark each entry as Planned or
+  Unplanned. Income, outgoing and net cash-flow totals update for the
+  selected month.
 - **Invoices** — generate a Proforma or Tax Invoice for any client,
   optionally tied to one of their projects (auto-fills the line item and
   GST rate, but you can still edit everything). The printed layout
