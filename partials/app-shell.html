@@ -181,8 +181,9 @@
 <!-- Cash entry modal -->
 <div class="modal-backdrop" id="cashEntryModalBackdrop">
   <div class="modal">
-    <div class="modal-head"><h3>Add Cash Flow Entry</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-head"><h3 id="cashEntryModalTitle">Add Cash Flow Entry</h3><button class="modal-close" data-action="close-modal">×</button></div>
     <div class="modal-body">
+      <input type="hidden" id="ceId">
       <div class="grid2">
         <div class="field"><label>Type</label><select id="ceType"><option value="income">Income / Incoming</option><option value="expense">Expense / Outgoing</option></select></div>
         <div class="field"><label>Planned status</label><select id="cePlanStatus"><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></div>
@@ -196,7 +197,7 @@
       <div class="field"><label>Category / tag (optional)</label><input id="ceCategory" list="cashCategorySuggestions" placeholder="e.g. Sales, Salary, Marketing, Office"></div>
       <div class="field"><label>Note (optional)</label><textarea id="ceNote" placeholder="Extra details"></textarea></div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-cash-entry">Save Entry</button></div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" id="saveCashEntryBtn" data-action="save-cash-entry">Save Entry</button></div>
   </div>
 </div>
 <datalist id="cashCategorySuggestions"></datalist>

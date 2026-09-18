@@ -25,7 +25,8 @@ if ($method === 'POST') {
   $body = json_body();
   $op = str_field($body, 'op');
 
-  if ($op === 'create') {
+  if ($op === 'create' || $op === 'update') {
+    $id = int_field($body, 'id');
     $type = str_field($body, 'entry_type');
     $clientId = int_field($body, 'client_id') ?: null;
     $title = str_field($body, 'title');
@@ -35,6 +36,7 @@ if ($method === 'POST') {
     $planStatus = str_field($body, 'plan_status', 'planned');
     $note = str_field($body, 'note');
     if (!in_array($type, ['income', 'expense'], true)) json_error('Choose income or expense.');
+    if ($op === 'update' && !$id) json_error('Missing entry id.');
     if ($title === '' || $amount <= 0 || $date === '') json_error('Title, amount and date are required.');
     if (!in_array($planStatus, ['planned', 'unplanned'], true)) $planStatus = 'planned';
     if ($clientId) {
@@ -44,9 +46,14 @@ if ($method === 'POST') {
     }
     $month = substr($date, 0, 7);
     if (!preg_match('/^\\d{4}-\\d{2}$/', $month)) json_error('Enter a valid date.');
-    $stmt = $pdo->prepare('INSERT INTO cash_entries (client_id, entry_type, title, category, amount, entry_date, month, plan_status, note) VALUES (?,?,?,?,?,?,?,?,?)');
-    $stmt->execute([$clientId, $type, $title, $category, $amount, $date, $month, $planStatus, $note]);
-    json_out(['id' => (int)$pdo->lastInsertId()], 201);
+    if ($op === 'create') {
+      $stmt = $pdo->prepare('INSERT INTO cash_entries (client_id, entry_type, title, category, amount, entry_date, month, plan_status, note) VALUES (?,?,?,?,?,?,?,?,?)');
+      $stmt->execute([$clientId, $type, $title, $category, $amount, $date, $month, $planStatus, $note]);
+      json_out(['id' => (int)$pdo->lastInsertId()], 201);
+    }
+    $stmt = $pdo->prepare('UPDATE cash_entries SET client_id=?, entry_type=?, title=?, category=?, amount=?, entry_date=?, month=?, plan_status=?, note=? WHERE id=?');
+    $stmt->execute([$clientId, $type, $title, $category, $amount, $date, $month, $planStatus, $note, $id]);
+    json_out(['ok' => true]);
   }
 
   if ($op === 'delete') {

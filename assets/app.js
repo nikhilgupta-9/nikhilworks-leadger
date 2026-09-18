@@ -618,24 +618,30 @@
         '<td>'+planStatusPill(entry.planStatus)+'</td>'+
         '<td class="muted">'+esc(entry.note || "—")+'</td>'+
         '<td class="num" style="font-weight:700; color:'+(entry.entryType === "income" ? "var(--success)" : "var(--danger)")+';">'+(entry.entryType === "income" ? "+" : "−")+fmtMoney(entry.amount)+'</td>'+
-        '<td><button class="icon-btn" title="Delete entry" data-action="delete-cash-entry" data-id="'+entry.id+'">×</button></td>'+
+        '<td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-action="edit-cash-entry" data-id="'+entry.id+'">Edit</button><button class="icon-btn" title="Delete entry" data-action="delete-cash-entry" data-id="'+entry.id+'">×</button></div></td>'+
       '</tr>';
     }).join("");
   }
 
-  function openCashEntryModal(){
-    $("#ceType").value = "income";
-    $("#cePlanStatus").value = "planned";
-    $("#ceTitle").value = "";
-    $("#ceAmount").value = "";
-    $("#ceDate").value = todayISO();
+  function openCashEntryModal(id){
+    var entry = id ? cashEntries.filter(function(item){ return String(item.id) === String(id); })[0] : null;
+    if(id && !entry){ toast("Cash-flow entry not found"); return; }
+    $("#cashEntryModalTitle").textContent = entry ? "Edit Cash Flow Entry" : "Add Cash Flow Entry";
+    $("#saveCashEntryBtn").textContent = entry ? "Update Entry" : "Save Entry";
+    $("#ceId").value = entry ? entry.id : "";
+    $("#ceType").value = entry ? entry.entryType : "income";
+    $("#cePlanStatus").value = entry ? entry.planStatus : "planned";
+    $("#ceTitle").value = entry ? entry.title : "";
+    $("#ceAmount").value = entry ? entry.amount : "";
+    $("#ceDate").value = entry ? entry.date : todayISO();
     var clientOptions = Object.keys(clients).sort(function(a,b){ return clients[a].name.localeCompare(clients[b].name); })
       .map(function(id){ return '<option value="'+id+'">'+esc(clients[id].name)+'</option>'; }).join("");
     $("#ceClientId").innerHTML = '<option value="">Not linked to a client</option>' + clientOptions;
-    $("#ceCategory").value = "";
+    $("#ceClientId").value = entry && entry.clientId ? entry.clientId : "";
+    $("#ceCategory").value = entry ? entry.category : "";
     $("#cashCategorySuggestions").innerHTML = cashEntries.map(function(entry){ return entry.category; }).filter(function(category, index, list){ return category && list.indexOf(category) === index; })
       .sort(function(a,b){ return a.localeCompare(b); }).map(function(category){ return '<option value="'+esc(category)+'">'; }).join("");
-    $("#ceNote").value = "";
+    $("#ceNote").value = entry ? entry.note : "";
     openModal("cashEntryModalBackdrop");
   }
 
@@ -889,6 +895,7 @@
     else if(action==="invoice-for-project") openInvoiceModal(t.getAttribute("data-client-id"), t.getAttribute("data-project-id"), t.getAttribute("data-invoice-type"));
     else if(action==="new-invoice") openInvoiceModal(null, null);
     else if(action==="new-cash-entry") openCashEntryModal();
+    else if(action==="edit-cash-entry") openCashEntryModal(t.getAttribute("data-id"));
     else if(action==="save-cash-entry") saveCashEntry();
     else if(action==="delete-cash-entry") deleteCashEntry(t.getAttribute("data-id"));
     else if(action==="add-item") addItemRow();
@@ -1080,18 +1087,19 @@
   }
 
   function saveCashEntry(){
+    var id = $("#ceId").value;
     var title = $("#ceTitle").value.trim();
     var amount = Number($("#ceAmount").value);
     if(!title){ toast("Entry title is required"); return; }
     if(!amount || amount <= 0){ toast("Enter a valid amount"); return; }
     var payload = {
-      op: "create", entry_type: $("#ceType").value, title: title, amount: amount,
+      op: id ? "update" : "create", id: id ? Number(id) : undefined, entry_type: $("#ceType").value, title: title, amount: amount,
       client_id: $("#ceClientId").value ? Number($("#ceClientId").value) : null,
       entry_date: $("#ceDate").value || todayISO(), category: $("#ceCategory").value.trim(),
       plan_status: $("#cePlanStatus").value, note: $("#ceNote").value.trim()
     };
     api("api/cash_entries.php", {method:"POST", body: JSON.stringify(payload)})
-      .then(function(){ toast("Cash-flow entry saved"); closeModals(); return refreshAndRender(); })
+      .then(function(){ toast(id ? "Cash-flow entry updated" : "Cash-flow entry saved"); closeModals(); return refreshAndRender(); })
       .catch(function(err){ toast("Couldn't save: "+err.message); });
   }
 
