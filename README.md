@@ -27,6 +27,8 @@ This guide assumes no prior server experience. Follow the steps in order.
 > - `migrations/v3_to_v4.sql` — adds the Cash Flow tracker for monthly
 >   income and outgoing entries, including planned/unplanned tags and an
 >   optional category. It does not change any existing records.
+> - `migrations/v4_to_v5.sql` — lets Cash Flow entries be optionally linked
+>   to a client. Existing entries stay unchanged and unlinked.
 
 ---
 
@@ -171,8 +173,9 @@ created, and you're in. From there:
 - **Cash Flow** — a separate monthly view for all income and outgoing
   money, even when it is not tied to a client project. Add a category such
   as Sales, Salary, Marketing or Office, and mark each entry as Planned or
-  Unplanned. Income, outgoing and net cash-flow totals update for the
-  selected month.
+  Unplanned. An entry may optionally be linked to a client, and the table
+  can be filtered category-wise. Income, outgoing and net cash-flow totals
+  update for the selected month and category.
 - **Invoices** — generate a Proforma or Tax Invoice for any client,
   optionally tied to one of their projects (auto-fills the line item and
   GST rate, but you can still edit everything). The printed layout

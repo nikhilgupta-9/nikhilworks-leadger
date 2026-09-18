@@ -580,7 +580,14 @@
     if(!monthInput) return;
     if(!monthInput.value) monthInput.value = currentMonthISO();
     var selectedMonth = monthInput.value;
-    var list = cashEntries.filter(function(entry){ return entry.month === selectedMonth; });
+    var categoryFilter = $("#cashCategoryFilter");
+    var selectedCategory = categoryFilter.value;
+    var categories = cashEntries.filter(function(entry){ return entry.month === selectedMonth; }).map(function(entry){ return entry.category; }).filter(function(category){ return category; })
+      .filter(function(category, index, list){ return list.indexOf(category) === index; }).sort(function(a,b){ return a.localeCompare(b); });
+    categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(function(category){ return '<option value="'+esc(category)+'">'+esc(category)+'</option>'; }).join("");
+    categoryFilter.value = categories.indexOf(selectedCategory) !== -1 ? selectedCategory : "";
+    selectedCategory = categoryFilter.value;
+    var list = cashEntries.filter(function(entry){ return entry.month === selectedMonth && (!selectedCategory || entry.category === selectedCategory); });
     var income = 0, expense = 0, planned = 0, unplanned = 0;
     list.forEach(function(entry){
       if(entry.entryType === "income") income += entry.amount;
@@ -598,13 +605,14 @@
 
     var body = $("#cashEntriesBody");
     if(!list.length){
-      body.innerHTML = '<tr class="empty-row"><td colspan="8">No cash-flow entries for '+esc(fmtMonth(selectedMonth))+'. Add your first entry.</td></tr>';
+      body.innerHTML = '<tr class="empty-row"><td colspan="9">No cash-flow entries for '+esc(fmtMonth(selectedMonth))+'. Add your first entry.</td></tr>';
       return;
     }
     body.innerHTML = list.map(function(entry){
       return '<tr>'+
         '<td>'+fmtDate(entry.date)+'</td>'+
         '<td class="name-cell">'+esc(entry.title)+'</td>'+
+        '<td>'+esc(entry.clientName || "—")+'</td>'+
         '<td>'+esc(entry.category || "—")+'</td>'+
         '<td>'+cashTypePill(entry.entryType)+'</td>'+
         '<td>'+planStatusPill(entry.planStatus)+'</td>'+
@@ -621,7 +629,12 @@
     $("#ceTitle").value = "";
     $("#ceAmount").value = "";
     $("#ceDate").value = todayISO();
+    var clientOptions = Object.keys(clients).sort(function(a,b){ return clients[a].name.localeCompare(clients[b].name); })
+      .map(function(id){ return '<option value="'+id+'">'+esc(clients[id].name)+'</option>'; }).join("");
+    $("#ceClientId").innerHTML = '<option value="">Not linked to a client</option>' + clientOptions;
     $("#ceCategory").value = "";
+    $("#cashCategorySuggestions").innerHTML = cashEntries.map(function(entry){ return entry.category; }).filter(function(category, index, list){ return category && list.indexOf(category) === index; })
+      .sort(function(a,b){ return a.localeCompare(b); }).map(function(category){ return '<option value="'+esc(category)+'">'; }).join("");
     $("#ceNote").value = "";
     openModal("cashEntryModalBackdrop");
   }
@@ -932,7 +945,7 @@
     };
   }
   function mapCashEntryRow(r){
-    return { id: r.id, entryType: r.entry_type, title: r.title, category: r.category,
+    return { id: r.id, clientId: r.client_id != null ? String(r.client_id) : null, clientName: r.client_name || "", entryType: r.entry_type, title: r.title, category: r.category,
       amount: Number(r.amount)||0, date: r.entry_date, month: r.month,
       planStatus: r.plan_status, note: r.note };
   }
@@ -1073,6 +1086,7 @@
     if(!amount || amount <= 0){ toast("Enter a valid amount"); return; }
     var payload = {
       op: "create", entry_type: $("#ceType").value, title: title, amount: amount,
+      client_id: $("#ceClientId").value ? Number($("#ceClientId").value) : null,
       entry_date: $("#ceDate").value || todayISO(), category: $("#ceCategory").value.trim(),
       plan_status: $("#cePlanStatus").value, note: $("#ceNote").value.trim()
     };
@@ -1153,6 +1167,7 @@
     renderFoot();
     $("#cashMonth").value = currentMonthISO();
     $("#cashMonth").addEventListener("change", renderCashflow);
+    $("#cashCategoryFilter").addEventListener("change", renderCashflow);
     loadAll().then(function(){
       renderAll();
     }).catch(function(err){

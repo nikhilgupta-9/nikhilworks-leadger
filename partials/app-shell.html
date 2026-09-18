@@ -144,6 +144,7 @@
         <div><h1>Cash Flow</h1><div class="sub">Track monthly business income and outgoing money</div></div>
         <div class="toolbar-actions">
           <label class="month-picker">Month <input type="month" id="cashMonth"></label>
+          <label class="month-picker">Category <select id="cashCategoryFilter"><option value="">All categories</option></select></label>
           <button class="btn btn-accent" data-action="new-cash-entry">+ Add Entry</button>
         </div>
       </div>
@@ -154,8 +155,8 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Entry</th><th>Category</th><th>Type</th><th>Plan</th><th>Note</th><th class="num">Amount</th><th></th></tr></thead>
-          <tbody id="cashEntriesBody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
+          <thead><tr><th>Date</th><th>Entry</th><th>Client</th><th>Category</th><th>Type</th><th>Plan</th><th>Note</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="cashEntriesBody"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -186,17 +187,19 @@
         <div class="field"><label>Type</label><select id="ceType"><option value="income">Income / Incoming</option><option value="expense">Expense / Outgoing</option></select></div>
         <div class="field"><label>Planned status</label><select id="cePlanStatus"><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></div>
       </div>
+      <div class="field"><label>Link client (optional)</label><select id="ceClientId"><option value="">Not linked to a client</option></select></div>
       <div class="field"><label>Title</label><input id="ceTitle" placeholder="e.g. Client payment, office rent, software subscription"></div>
       <div class="grid2">
         <div class="field"><label>Amount (₹)</label><input type="number" min="0" step="0.01" id="ceAmount" placeholder="5000"></div>
         <div class="field"><label>Date</label><input type="date" id="ceDate"></div>
       </div>
-      <div class="field"><label>Category / tag (optional)</label><input id="ceCategory" placeholder="e.g. Sales, Salary, Marketing, Office"></div>
+      <div class="field"><label>Category / tag (optional)</label><input id="ceCategory" list="cashCategorySuggestions" placeholder="e.g. Sales, Salary, Marketing, Office"></div>
       <div class="field"><label>Note (optional)</label><textarea id="ceNote" placeholder="Extra details"></textarea></div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-cash-entry">Save Entry</button></div>
   </div>
 </div>
+<datalist id="cashCategorySuggestions"></datalist>
 
 <!-- Client modal -->
 <div class="modal-backdrop" id="clientModalBackdrop">
