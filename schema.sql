@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS settings (
   tax_counter INT NOT NULL DEFAULT 1,
   proforma_prefix VARCHAR(10) NOT NULL DEFAULT 'PF',
   proforma_counter INT NOT NULL DEFAULT 1,
+  receipt_prefix VARCHAR(10) NOT NULL DEFAULT 'RC',
+  receipt_counter INT NOT NULL DEFAULT 1,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -160,6 +162,33 @@ CREATE TABLE IF NOT EXISTS invoices (
   CONSTRAINT fk_invoices_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
   CONSTRAINT fk_invoices_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
   UNIQUE KEY uniq_invoice_number (number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Payment receipts: a simple acknowledgement of money received, shareable
+-- with a client. Deliberately carries NO GST fields at all (no rate, no
+-- CGST/SGST/IGST, no SAC code, no GSTIN) — it only records what was paid.
+-- payment_id optionally links a receipt to a recorded project payment (one
+-- receipt per payment); standalone receipts leave it NULL.
+CREATE TABLE IF NOT EXISTS receipts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  client_id INT NOT NULL,
+  project_id INT NULL,
+  payment_id INT NULL,
+  client_name VARCHAR(190) NOT NULL,
+  project_title VARCHAR(190) NOT NULL DEFAULT '',
+  number VARCHAR(40) NOT NULL,
+  receipt_date DATE NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  mode VARCHAR(40) NOT NULL DEFAULT 'Bank Transfer',
+  reference VARCHAR(120) NOT NULL DEFAULT '',
+  description VARCHAR(255) NOT NULL DEFAULT '',
+  notes TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_receipts_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+  CONSTRAINT fk_receipts_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+  CONSTRAINT fk_receipts_payment FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL,
+  UNIQUE KEY uniq_receipt_number (number),
+  UNIQUE KEY uniq_receipt_payment (payment_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Seed the single settings row with NikhilWorks' business details.

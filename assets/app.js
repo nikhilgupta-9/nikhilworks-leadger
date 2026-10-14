@@ -10,6 +10,10 @@
   var vendorPayments = {};   // projectId(string) -> [vendor payments] (you -> vendor)
   var cashEntries = [];      // General business income / expense entries
   var invoices = {};         // id(string) -> data
+  var receipts = {};         // id(string) -> payment receipt
+  var receiptsByPayment = {}; // paymentId(string) -> receiptId(string)
+  var receiptsError = "";    // set when the receipts table isn't migrated yet
+  var currentReceiptId = null;
   var settings = null;
   var currentClientId = null;
   var currentProjectId = null;
@@ -21,7 +25,8 @@
     email: "", phone: "", website: "",
     bank: { accountName: "", accountNumber: "", ifsc: "", bankName: "", branch: "" },
     proformaValidityDays: 7,
-    taxPrefix: "NW", taxCounter: 1, proformaPrefix: "PF", proformaCounter: 1
+    taxPrefix: "NW", taxCounter: 1, proformaPrefix: "PF", proformaCounter: 1,
+    receiptPrefix: "RC", receiptCounter: 1
   };
 
   // ---------------- Utilities ----------------
@@ -121,6 +126,7 @@
       if(v==="outsourcing") renderOutsourcing();
       if(v==="cashflow") renderCashflow();
       if(v==="projects") renderProjectsList();
+      if(v==="receipts") renderReceiptsTable();
     });
   });
 
@@ -129,6 +135,7 @@
     renderDashboard();
     renderClientsTable();
     renderInvoicesTable();
+    renderReceiptsTable();
     if($('.view[data-view="projects"]').classList.contains("active")) renderProjectsList();
     if(currentProjectId && projects[currentProjectId]) renderProjectDetail(currentProjectId);
     else if(currentClientId && clients[currentClientId]) renderClientDetail(currentClientId);
@@ -374,7 +381,11 @@
       '<div class="section-title">Payment history (client → you)</div>'+
       '<div class="card" style="padding:16px 20px; margin-bottom:26px;">'+
         (pays.length ? pays.map(function(pay){
-          return '<div class="pay-row"><div><b class="num">'+fmtMoney(pay.amount)+'</b> <span class="muted">via '+esc(pay.mode)+(pay.month?' · '+fmtMonth(pay.month):'')+'</span>'+(pay.note?' — '+esc(pay.note):'')+'</div><div class="muted">'+fmtDate(pay.date)+'</div></div>';
+          var rcId = receiptsByPayment[pay.id];
+          var rcBtn = rcId
+            ? '<button class="btn btn-ghost btn-sm" data-open-receipt="'+rcId+'">View receipt</button>'
+            : '<button class="btn btn-ghost btn-sm" data-action="receipt-for-payment" data-payment-id="'+pay.id+'">Receipt</button>';
+          return '<div class="pay-row"><div><b class="num">'+fmtMoney(pay.amount)+'</b> <span class="muted">via '+esc(pay.mode)+(pay.month?' · '+fmtMonth(pay.month):'')+'</span>'+(pay.note?' — '+esc(pay.note):'')+'</div><div style="display:flex; gap:12px; align-items:center;"><span class="muted">'+fmtDate(pay.date)+'</span>'+rcBtn+'</div></div>';
         }).join("") : '<div class="muted" style="padding:8px 0;">No payments recorded yet for this project.</div>')+
       '</div>'+
       vendorSection+
@@ -537,6 +548,211 @@
       '<div class="inv-bar bottom"></div>';
     $("#printArea").innerHTML = html;
     showView("invoice-preview");
+  }
+
+  // ---------------- Receipts (payment receipts — never show GST) ----------------
+  function amountInWordsINR(n){
+    n = Math.round((Number(n)||0)*100)/100;
+    var rupees = Math.floor(n + 1e-9);
+    var paise = Math.round((n - rupees)*100);
+    if(paise >= 100){ rupees += 1; paise = 0; }
+    var words = rupees > 0 ? "Rupees " + numberToWordsIndian(rupees) : "";
+    if(paise > 0) words += (words ? " and " : "") + twoDigits(paise) + " Paise";
+    return (words || "Zero Rupees") + " Only";
+  }
+
+  function renderReceiptsTable(){
+    var body = $("#receiptsBody");
+    if(receiptsError){
+      body.innerHTML = '<tr class="empty-row"><td colspan="7">'+esc(receiptsError)+'</td></tr>';
+      return;
+    }
+    var ids = Object.keys(receipts).sort(function(a,b){
+      return (receipts[b].date||"").localeCompare(receipts[a].date||"") || (Number(b)-Number(a));
+    });
+    if(!ids.length){
+      body.innerHTML = '<tr class="empty-row"><td colspan="7">No receipts yet — click "New Receipt", or use the Receipt button next to a recorded payment on a project page.</td></tr>';
+      return;
+    }
+    body.innerHTML = ids.map(function(id){
+      var r = receipts[id];
+      return '<tr class="clickable" data-open-receipt="'+id+'">'+
+        '<td class="num">'+esc(r.number)+'</td>'+
+        '<td class="name-cell">'+esc(r.clientName)+'</td>'+
+        '<td class="muted">'+esc(r.description || r.projectTitle || "—")+'</td>'+
+        '<td>'+fmtDate(r.date)+'</td>'+
+        '<td>'+esc(r.mode)+'</td>'+
+        '<td class="num">'+fmtMoney(r.amount)+'</td>'+
+        '<td class="muted">View →</td>'+
+      '</tr>';
+    }).join("");
+  }
+
+  function renderReceiptPreview(id){
+    var r = receipts[id];
+    if(!r) return;
+    currentReceiptId = id;
+    var s = settings || BUSINESS_DEFAULT;
+    var client = clients[r.clientId] || {};
+    $("#receiptPreviewTitle").textContent = "Payment Receipt " + r.number;
+
+    var attnLine = client.contactName ? ('Attn: '+esc(client.contactName)+(client.contactTitle?' ('+esc(client.contactTitle)+')':'')+'<br>') : '';
+    var detailRows =
+      '<div class="inv-bank-row"><span class="lbl">Date Received</span><span class="val">'+fmtDate(r.date)+'</span></div>'+
+      '<div class="inv-bank-row"><span class="lbl">Payment Mode</span><span class="val">'+esc(r.mode)+'</span></div>'+
+      (r.reference ? '<div class="inv-bank-row"><span class="lbl">Reference No.</span><span class="val">'+esc(r.reference)+'</span></div>' : '')+
+      (r.projectTitle ? '<div class="inv-bank-row"><span class="lbl">Project</span><span class="val">'+esc(r.projectTitle)+'</span></div>' : '');
+    var notesList = ['This receipt acknowledges the payment received, as detailed above.'];
+    if(r.mode === "Cheque") notesList.push('Payment by cheque is subject to realisation.');
+    notesList.push('Please keep this receipt for your records.');
+
+    var html = ''+
+      '<div class="inv-bar top"></div>'+
+      '<div class="inv-wrap">'+
+        '<div class="inv-head">'+
+          '<div>'+
+            '<div class="nw-badge">NW</div>'+
+            '<div class="inv-brand-name">'+esc(s.legalName)+'</div>'+
+            '<div class="inv-brand-tagline">'+esc(s.tagline)+'</div>'+
+          '</div>'+
+          '<div class="inv-title-block">'+
+            '<h2>PAYMENT RECEIPT</h2>'+
+            '<div class="inv-title-underline"></div>'+
+            '<div class="inv-meta">'+
+              '<div><span>Receipt No:</span><b>'+esc(r.number)+'</b></div>'+
+              '<div><span>Date:</span><b>'+fmtDate(r.date)+'</b></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+
+        '<div class="fb-box">'+
+          '<div class="fb-col">'+
+            '<div class="fb-label">Received By</div>'+
+            '<div class="fb-name">'+esc(s.legalName)+(s.ownerName?' ('+esc(s.ownerName)+')':'')+'</div>'+
+            '<div class="fb-detail">'+esc(s.address)+'<br>Phone: '+esc(s.phone)+'<br>Email: '+esc(s.email)+'</div>'+
+          '</div>'+
+          '<div class="fb-col">'+
+            '<div class="fb-label">Received From</div>'+
+            '<div class="fb-name">'+esc(client.name || r.clientName || "—")+'</div>'+
+            '<div class="fb-detail">'+esc(client.address||"")+(client.address?'<br>':'')+attnLine+
+              (client.phone?('Mob: '+esc(client.phone)+'<br>'):'')+
+              (client.email?('Email: '+esc(client.email)+'<br>'):'')+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+
+        '<table class="inv-table">'+
+          '<thead><tr><th class="sno">S.No</th><th>Payment Towards</th><th class="num">Amount (₹)</th></tr></thead>'+
+          '<tbody><tr><td class="num">1</td><td class="desc">'+esc(r.description || r.projectTitle || "Payment received")+'</td><td class="num">'+fmtMoneyDoc(r.amount)+'</td></tr></tbody>'+
+        '</table>'+
+
+        '<div class="inv-totals-wrap"><div class="inv-totals">'+
+          '<div class="inv-advance-banner rc-banner"><span>Total Amount Received</span><span class="val">'+fmtMoneyDoc(r.amount)+'</span></div>'+
+        '</div></div>'+
+
+        '<div class="inv-terms-box"><b>Amount in words:</b> '+esc(amountInWordsINR(r.amount))+'</div>'+
+        (r.notes ? '<div class="inv-terms-box" style="margin-top:-8px;"><b>Note:</b> '+esc(r.notes)+'</div>' : '')+
+
+        '<div class="inv-lower">'+
+          '<div class="inv-lower-box">'+
+            '<div class="inv-lower-label">Payment Details</div>'+detailRows+
+          '</div>'+
+          '<div class="inv-lower-box">'+
+            '<div class="inv-lower-label">Notes</div>'+
+            '<ol class="inv-notes-list">'+notesList.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join("")+'</ol>'+
+          '</div>'+
+        '</div>'+
+
+        '<div class="inv-sign">'+
+          '<div></div>'+
+          '<div>For '+esc(s.legalName)+(s.ownerName?' — '+esc(s.ownerName):'')+'</div>'+
+        '</div>'+
+
+        '<div class="inv-doc-foot">'+esc(s.website)+' | '+esc(s.phone)+' | '+esc(s.email)+'</div>'+
+      '</div>'+
+      '<div class="inv-bar bottom"></div>';
+    $("#receiptPrintArea").innerHTML = html;
+    showView("receipt-preview");
+  }
+
+  var receiptAutoDesc = "";
+  function receiptAutoDescFor(projectId){
+    var p = projects[projectId];
+    return p ? "Payment towards " + p.title : "";
+  }
+  function populateReceiptProjects(clientId, selected){
+    var list = clientId ? projectsForClient(clientId) : [];
+    $("#rProject").innerHTML = '<option value="">— No project —</option>' +
+      list.map(function(p){ return '<option value="'+p.id+'">'+esc(p.title)+'</option>'; }).join("");
+    if(selected) $("#rProject").value = selected;
+  }
+  // Keep the "Payment towards" text in step with the chosen project, but never
+  // overwrite something the person has typed themselves.
+  function syncReceiptDescription(){
+    var cur = $("#rDescription").value.trim();
+    if(cur === "" || cur === receiptAutoDesc){
+      receiptAutoDesc = receiptAutoDescFor($("#rProject").value);
+      $("#rDescription").value = receiptAutoDesc;
+    }
+  }
+  function openReceiptModal(clientId, projectId){
+    if(receiptsError){ toast(receiptsError); return; }
+    if(!Object.keys(clients).length){ toast("Add a client first"); return; }
+    populateClientSelect($("#rClient"), clientId);
+    populateReceiptProjects($("#rClient").value, projectId);
+    receiptAutoDesc = "";
+    $("#rDescription").value = "";
+    syncReceiptDescription();
+    $("#rAmount").value = "";
+    $("#rDate").value = todayISO();
+    $("#rMode").value = "Bank Transfer";
+    $("#rReference").value = "";
+    $("#rNotes").value = "";
+    $("#rClient").onchange = function(){ populateReceiptProjects($("#rClient").value, null); syncReceiptDescription(); };
+    $("#rProject").onchange = syncReceiptDescription;
+    openModal("receiptModalBackdrop");
+  }
+
+  function saveReceipt(){
+    var clientId = $("#rClient").value;
+    if(!clientId || !clients[clientId]){ toast("Pick a client first"); return; }
+    var amount = Number($("#rAmount").value);
+    if(!amount || amount <= 0){ toast("Enter the amount received"); return; }
+    var projectId = $("#rProject").value;
+    var payload = {
+      op: "create", client_id: Number(clientId), project_id: projectId ? Number(projectId) : null,
+      amount: amount, date: $("#rDate").value || todayISO(), mode: $("#rMode").value,
+      reference: $("#rReference").value.trim(), description: $("#rDescription").value.trim(),
+      notes: $("#rNotes").value.trim()
+    };
+    api("api/receipts.php", {method:"POST", body: JSON.stringify(payload)})
+      .then(function(result){
+        closeModals(); toast("Receipt "+result.number+" created");
+        return refreshAndRender().then(function(){ renderReceiptPreview(String(result.id)); });
+      })
+      .catch(function(err){ toast("Couldn't save: "+err.message); });
+  }
+
+  // One click from a recorded payment: the server builds the receipt from the
+  // payment itself, and returns the existing one if it was already made.
+  function receiptForPayment(paymentId){
+    if(receiptsError){ toast(receiptsError); return; }
+    api("api/receipts.php", {method:"POST", body: JSON.stringify({op:"create", payment_id: Number(paymentId)})})
+      .then(function(result){
+        toast(result.existing ? "Opening receipt "+result.number : "Receipt "+result.number+" created");
+        return refreshAndRender().then(function(){ renderReceiptPreview(String(result.id)); });
+      })
+      .catch(function(err){ toast("Couldn't create receipt: "+err.message); });
+  }
+
+  function deleteReceipt(){
+    var r = receipts[currentReceiptId];
+    if(!r) return;
+    if(!window.confirm("Delete receipt "+r.number+"? This can't be undone, and the number won't be reused.")) return;
+    api("api/receipts.php", {method:"POST", body: JSON.stringify({op:"delete", id: Number(currentReceiptId)})})
+      .then(function(){ toast("Receipt deleted"); return refreshAndRender(); })
+      .then(function(){ currentReceiptId = null; showView("receipts"); })
+      .catch(function(err){ toast("Couldn't delete: "+err.message); });
   }
 
   // ---------------- Rendering: Outsourcing ----------------
@@ -702,6 +918,7 @@
         '<div class="field"><label>Proforma prefix / next no.</label><div style="display:flex; gap:8px;"><input id="sProPrefix" value="'+esc(s.proformaPrefix)+'" style="width:70px;"><input id="sProCounter" type="number" value="'+esc(s.proformaCounter)+'"></div></div>'+
       '</div>'+
       '<div class="field"><label>Proforma Invoice validity (days, printed as "Valid Till")</label><input type="number" id="sValidityDays" value="'+esc(s.proformaValidityDays)+'" style="max-width:120px;"></div>'+
+      '<div class="field"><label>Payment receipt prefix / next no.</label><div style="display:flex; gap:8px;"><input id="sRecPrefix" value="'+esc(s.receiptPrefix||"RC")+'" style="width:70px;"><input id="sRecCounter" type="number" value="'+esc(s.receiptCounter||1)+'" style="max-width:140px;"></div></div>'+
       '</div>'+
       '<button class="btn btn-accent" data-action="save-settings" style="margin-top:6px;">Save Settings</button>';
     $("#settingsForm").innerHTML = html;
@@ -874,6 +1091,8 @@
       var openClient = e.target.closest("[data-open-client]");
       var openProject = e.target.closest("[data-open-project]");
       var openInvoice = e.target.closest("[data-open-invoice]");
+      var openReceipt = e.target.closest("[data-open-receipt]");
+      if(openReceipt){ renderReceiptPreview(openReceipt.getAttribute("data-open-receipt")); return; }
       if(openClient){ renderClientDetail(openClient.getAttribute("data-open-client")); return; }
       if(openProject){ renderProjectDetail(openProject.getAttribute("data-open-project")); return; }
       if(openInvoice){ renderInvoicePreview(openInvoice.getAttribute("data-open-invoice")); return; }
@@ -894,6 +1113,11 @@
     else if(action==="invoice-for-client") openInvoiceModal(t.getAttribute("data-id"), null);
     else if(action==="invoice-for-project") openInvoiceModal(t.getAttribute("data-client-id"), t.getAttribute("data-project-id"), t.getAttribute("data-invoice-type"));
     else if(action==="new-invoice") openInvoiceModal(null, null);
+    else if(action==="new-receipt") openReceiptModal(null, null);
+    else if(action==="save-receipt") saveReceipt();
+    else if(action==="receipt-for-payment") receiptForPayment(t.getAttribute("data-payment-id"));
+    else if(action==="delete-receipt") deleteReceipt();
+    else if(action==="go-receipts") showView("receipts");
     else if(action==="new-cash-entry") openCashEntryModal();
     else if(action==="edit-cash-entry") openCashEntryModal(t.getAttribute("data-id"));
     else if(action==="save-cash-entry") saveCashEntry();
@@ -951,6 +1175,14 @@
       notes: r.notes, placeOfSupply: r.place_of_supply, isImported: !!r.is_imported
     };
   }
+  function mapReceiptRow(r){
+    return {
+      id: String(r.id), clientId: String(r.client_id), projectId: r.project_id!=null ? String(r.project_id) : null,
+      paymentId: r.payment_id!=null ? String(r.payment_id) : null,
+      clientName: r.client_name, projectTitle: r.project_title, number: r.number, date: r.receipt_date,
+      amount: Number(r.amount)||0, mode: r.mode, reference: r.reference, description: r.description, notes: r.notes
+    };
+  }
   function mapCashEntryRow(r){
     return { id: r.id, clientId: r.client_id != null ? String(r.client_id) : null, clientName: r.client_name || "", entryType: r.entry_type, title: r.title, category: r.category,
       amount: Number(r.amount)||0, date: r.entry_date, month: r.month,
@@ -962,7 +1194,8 @@
       email: r.email, phone: r.phone, website: r.website,
       bank: { accountName: r.bank_account_name, accountNumber: r.bank_account_number, ifsc: r.bank_ifsc, bankName: r.bank_name, branch: r.bank_branch },
       proformaValidityDays: r.proforma_validity_days,
-      taxPrefix: r.tax_prefix, taxCounter: r.tax_counter, proformaPrefix: r.proforma_prefix, proformaCounter: r.proforma_counter
+      taxPrefix: r.tax_prefix, taxCounter: r.tax_counter, proformaPrefix: r.proforma_prefix, proformaCounter: r.proforma_counter,
+      receiptPrefix: r.receipt_prefix || "RC", receiptCounter: r.receipt_counter || 1
     };
   }
 
@@ -974,10 +1207,13 @@
       api("api/vendor_payments.php"),
       api("api/invoices.php"),
       api("api/settings.php"),
-      api("api/cash_entries.php")
+      api("api/cash_entries.php"),
+      // Receipts load separately so a database that hasn't had the receipts
+      // migration yet shows a message there instead of breaking the whole app.
+      api("api/receipts.php").catch(function(err){ return { receipts: [], __error: err.message }; })
     ]).then(function(results){
       var clientsRes = results[0], projectsRes = results[1], paymentsRes = results[2],
-          vendorPaymentsRes = results[3], invoicesRes = results[4], settingsRes = results[5], cashEntriesRes = results[6];
+          vendorPaymentsRes = results[3], invoicesRes = results[4], settingsRes = results[5], cashEntriesRes = results[6], receiptsRes = results[7];
 
       clients = {};
       (clientsRes.clients||[]).forEach(function(r){ clients[String(r.id)] = mapClientRow(r); });
@@ -989,7 +1225,7 @@
       (paymentsRes.payments||[]).forEach(function(p){
         var pid = String(p.project_id);
         if(!projectPayments[pid]) projectPayments[pid] = [];
-        projectPayments[pid].push({ amount: Number(p.amount)||0, date: p.payment_date, month: p.month, mode: p.mode, note: p.note });
+        projectPayments[pid].push({ id: String(p.id), amount: Number(p.amount)||0, date: p.payment_date, month: p.month, mode: p.mode, note: p.note });
       });
 
       vendorPayments = {};
@@ -1004,6 +1240,13 @@
 
       settings = settingsRes.settings ? mapSettingsRow(settingsRes.settings) : BUSINESS_DEFAULT;
       cashEntries = (cashEntriesRes.entries||[]).map(mapCashEntryRow);
+
+      receiptsError = receiptsRes.__error || "";
+      receipts = {}; receiptsByPayment = {};
+      (receiptsRes.receipts||[]).forEach(function(r){
+        receipts[String(r.id)] = mapReceiptRow(r);
+        if(r.payment_id != null) receiptsByPayment[String(r.payment_id)] = String(r.id);
+      });
     });
   }
 
@@ -1155,6 +1398,7 @@
       proforma_validity_days: Number($("#sValidityDays").value)||7,
       tax_prefix: $("#sTaxPrefix").value.trim()||"NW", tax_counter: Number($("#sTaxCounter").value)||1,
       proforma_prefix: $("#sProPrefix").value.trim()||"PF", proforma_counter: Number($("#sProCounter").value)||1,
+      receipt_prefix: $("#sRecPrefix").value.trim()||"RC", receipt_counter: Number($("#sRecCounter").value)||1,
       state: $("#sState").value || "Delhi"
     };
     api("api/settings.php", {method:"POST", body: JSON.stringify(payload)})

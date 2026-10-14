@@ -16,6 +16,7 @@
       <button data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="7.5" r="2.5"/><path d="M15 13.5c2.9.3 5 2.6 5 6"/></svg>Clients</button>
       <button data-view="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 15h10M7 18h6"/></svg>Projects</button>
       <button data-view="invoices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h6M9 16h6M9 8h3"/></svg>Invoices</button>
+      <button data-view="receipts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 9h6M9 13h6"/></svg>Receipts</button>
       <button data-view="outsourcing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/></svg>Outsourcing</button>
       <button data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Cash Flow</button>
       <button data-view="letterhead"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3h16v18l-3-2-2.5 2-2.5-2-2.5 2L7 19l-3 2z"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>Letterhead</button>
@@ -118,6 +119,33 @@
         </div>
       </div>
       <div class="paper-scroll"><div class="paper" id="printArea"></div></div>
+    </section>
+
+    <!-- RECEIPTS LIST -->
+    <section class="view" data-view="receipts">
+      <div class="topbar">
+        <div><h1>Receipts</h1><div class="sub">Payment receipts you can share with a client — amount received only, no GST shown</div></div>
+        <button class="btn btn-accent" data-action="new-receipt">+ New Receipt</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Receipt No.</th><th>Client</th><th>Payment towards</th><th>Date</th><th>Mode</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="receiptsBody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- RECEIPT PREVIEW -->
+    <section class="view" data-view="receipt-preview">
+      <button class="back-link" data-action="go-receipts">← All receipts</button>
+      <div class="doc-toolbar">
+        <h2 id="receiptPreviewTitle" style="font-size:17px;"></h2>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-ghost" data-action="delete-receipt">Delete</button>
+          <button class="btn btn-ghost" data-action="print-doc">🖨 Print / Save PDF</button>
+        </div>
+      </div>
+      <div class="paper-scroll"><div class="paper" id="receiptPrintArea"></div></div>
     </section>
 
     <!-- OUTSOURCING -->
@@ -340,6 +368,33 @@
       <div class="field"><label>Payment terms (printed above bank details)</label><textarea id="iNotes">Payment due within 7 days of invoice date via bank transfer or UPI. Late payments may attract additional charges.</textarea></div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-invoice">Generate Invoice</button></div>
+  </div>
+</div>
+
+<!-- Receipt modal (standalone receipt; receipts for a recorded payment are one click) -->
+<div class="modal-backdrop" id="receiptModalBackdrop">
+  <div class="modal">
+    <div class="modal-head"><h3>New Payment Receipt</h3><button class="modal-close" data-action="close-modal">×</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div class="field"><label>Client</label><select id="rClient"></select></div>
+        <div class="field"><label>Project (optional)</label><select id="rProject"><option value="">— No project —</option></select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Amount received (₹)</label><input type="number" id="rAmount" placeholder="41300"></div>
+        <div class="field"><label>Date received</label><input type="date" id="rDate"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Mode</label>
+          <select id="rMode"><option>Bank Transfer</option><option>UPI</option><option>Cash</option><option>Cheque</option><option>Card</option><option>Other</option></select>
+        </div>
+        <div class="field"><label>Reference / UTR no. (optional)</label><input id="rReference" placeholder="e.g. UTR / cheque / txn no."></div>
+      </div>
+      <div class="field"><label>Payment towards (printed on the receipt)</label><input id="rDescription" placeholder="e.g. Advance payment towards Website Redesign"></div>
+      <div class="field"><label>Note for the client (optional)</label><textarea id="rNotes" placeholder="Anything you want printed on the receipt"></textarea></div>
+      <div class="field hint" style="margin-top:-4px;">This only creates the receipt document — it doesn't add a payment to a project. To receipt a payment you've already recorded, use the <b>Receipt</b> button next to it on the project page.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-action="close-modal">Cancel</button><button class="btn btn-accent" data-action="save-receipt">Create Receipt</button></div>
   </div>
 </div>
 

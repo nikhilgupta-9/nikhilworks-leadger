@@ -9,7 +9,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
   $row = $pdo->query("SELECT * FROM settings WHERE id=1")->fetch();
   if (!$row) json_error('Settings row missing — re-import schema.sql.', 500);
-  foreach (['tax_counter','proforma_counter','proforma_validity_days'] as $f) $row[$f] = (int)$row[$f];
+  foreach (['tax_counter','proforma_counter','receipt_counter','proforma_validity_days'] as $f) $row[$f] = (int)$row[$f];
   json_out(['settings' => $row]);
 }
 
@@ -37,12 +37,19 @@ if ($method === 'POST') {
     'tax_counter' => int_field($body, 'tax_counter', 1),
     'proforma_prefix' => str_field($body, 'proforma_prefix', 'PF'),
     'proforma_counter' => int_field($body, 'proforma_counter', 1),
+    'receipt_prefix' => str_field($body, 'receipt_prefix', 'RC'),
+    'receipt_counter' => int_field($body, 'receipt_counter', 1),
   ];
   // Counters only ever move forward here: a save that (accidentally or via a
   // stale form) submits a lower number than what's already stored must not
   // roll the sequence back, or the next invoice generated would collide with
   // one already issued. Deliberately jumping the sequence ahead still works
   // since GREATEST() keeps whichever value is higher.
+  // The receipt numbering columns only exist after migrations/v5_to_v6.sql;
+  // until then they are skipped so saving settings keeps working.
+  $current = $pdo->query("SELECT * FROM settings WHERE id=1")->fetch();
+  $hasReceiptCols = $current && array_key_exists('receipt_prefix', $current);
+  if (!$hasReceiptCols) { unset($fields['receipt_prefix'], $fields['receipt_counter']); }
   $stmt = $pdo->prepare("UPDATE settings SET
     legal_name=:legal_name, tagline=:tagline, owner_name=:owner_name, gstin=:gstin, pan=:pan, address=:address, state=:state,
     email=:email, phone=:phone, website=:website,
@@ -50,7 +57,9 @@ if ($method === 'POST') {
     bank_ifsc=:bank_ifsc, bank_name=:bank_name, bank_branch=:bank_branch,
     proforma_validity_days=:proforma_validity_days,
     tax_prefix=:tax_prefix, tax_counter=GREATEST(tax_counter, :tax_counter),
-    proforma_prefix=:proforma_prefix, proforma_counter=GREATEST(proforma_counter, :proforma_counter)
+    proforma_prefix=:proforma_prefix, proforma_counter=GREATEST(proforma_counter, :proforma_counter)"
+    . ($hasReceiptCols ? ",
+    receipt_prefix=:receipt_prefix, receipt_counter=GREATEST(receipt_counter, :receipt_counter)" : "") . "
     WHERE id=1");
   $stmt->execute($fields);
   json_out(['ok' => true]);

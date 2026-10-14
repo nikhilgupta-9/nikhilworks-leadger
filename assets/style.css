@@ -309,6 +309,7 @@
   .inv-totals-row.grand .val{font-weight:800; font-size:13.5px; color:var(--primary);}
   .inv-advance-banner{display:flex; justify-content:space-between; background:var(--primary); color:#fff; padding:9px 12px; border-radius:6px; margin-top:12px; font-weight:700; font-size:11.5px;}
   .inv-advance-banner .val{font-family:"IBM Plex Mono",monospace;}
+  .inv-advance-banner.rc-banner{font-size:13.5px; padding:13px 14px;}
   .inv-balance-row{display:flex; justify-content:space-between; padding:8px 12px; font-size:11.5px; color:#3d5450;}
   .inv-balance-row .val{font-weight:700; color:#0a1f1c; font-family:"IBM Plex Mono",monospace;}
 
@@ -344,8 +345,14 @@
 
   @media print{
     body *{visibility:hidden;}
-    #printArea, #printArea *{visibility:visible;}
-    #printArea{position:absolute; top:0; left:0; margin:0; box-shadow:none; width:100%;}
+    #printArea, #printArea *, #receiptPrintArea, #receiptPrintArea *{visibility:visible;}
+    #printArea, #receiptPrintArea{position:absolute; top:0; left:0; margin:0; box-shadow:none; width:100%;}
+    /* Browsers drop background colours when printing unless told otherwise,
+       which turns the teal bars, table header and banners white-on-white.
+       Force the real theme colours into the print / Save-as-PDF output. */
+    #printArea, #printArea *, #receiptPrintArea, #receiptPrintArea *{
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
     @page{margin:0;}
   }
 
