@@ -7,6 +7,7 @@
  */
 require_once __DIR__ . '/../includes/db.php';
 
+require_once __DIR__ . '/../includes/session.php';   // also creates any missing tables from schema.sql
 $pdo = db();
 $existing = 0;
 try {

@@ -62,6 +62,7 @@ if ($op === 'login_verify') {
   }
   login_throttle_reset();
   login_admin((int)$row['admin_id']);
+  $pdo->prepare('UPDATE admin_users SET last_login_at = NOW() WHERE id = ?')->execute([$row['admin_id']]);
   json_out(['ok' => true, 'redirect' => 'index.php']);
 }
 
@@ -92,7 +93,7 @@ if ($op === 'register_options') {
 if ($op === 'register_verify') {
   $cred = is_array($body['credential'] ?? null) ? $body['credential'] : [];
   $resp = is_array($cred['response'] ?? null) ? $cred['response'] : [];
-  $label = mb_substr(str_field($body, 'label'), 0, 100);
+  $label = substr(str_field($body, 'label'), 0, 100);
   if ($label === '') $label = 'My device';
   try {
     list($credId, $pem, $alg, $count) = wa_verify_registration($resp, wa_take_challenge('register'));

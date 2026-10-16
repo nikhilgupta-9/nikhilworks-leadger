@@ -1,6 +1,13 @@
 -- NikhilWorks Ledger — database schema (MySQL / MariaDB)
--- Import this once via phpMyAdmin (or `mysql -u USER -p DBNAME < schema.sql`)
--- before visiting install/setup.php on your site.
+--
+-- THIS FILE IS THE SINGLE SOURCE OF TRUTH FOR THE DATABASE. The app reads it
+-- on page load (includes/schema_sync.php) and automatically creates any
+-- missing table, column, index or foreign key — so after you deploy new code
+-- you just refresh the page; no manual import is needed. To change the
+-- database in future, edit the CREATE TABLE below (add the column/table) and
+-- deploy. Keep every statement idempotent (CREATE TABLE IF NOT EXISTS), put
+-- tables after the tables they reference, and never drop/rename columns here.
+-- (Importing it by hand in phpMyAdmin still works too.)
 --
 -- v2: clients can now have multiple projects/services, each project has its
 -- own cost, its own monthly payment history, and (optionally) its own
@@ -13,6 +20,9 @@ CREATE TABLE IF NOT EXISTS admin_users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(60) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  display_name VARCHAR(120) NOT NULL DEFAULT '',
+  email VARCHAR(190) NOT NULL DEFAULT '',
+  last_login_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

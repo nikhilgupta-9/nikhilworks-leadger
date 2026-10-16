@@ -127,13 +127,14 @@
     var mb = $("#menuBtn"); if(mb) mb.setAttribute("aria-expanded", open ? "true" : "false");
     document.body.classList.toggle("drawer-open", open);
   }
-  var NAV_VIEWS = ["dashboard","clients","projects","invoices","receipts","outsourcing","cashflow","letterhead","settings"];
+  var NAV_VIEWS = ["dashboard","clients","projects","invoices","receipts","outsourcing","cashflow","letterhead","settings","profile"];
   function navTo(v, fromHash){
     setDrawer(false);
     if(!fromHash && location.hash.slice(1) !== v){ try{ history.pushState(null, "", "#"+v); }catch(e){} }
     showView(v);
     if(v==="letterhead") renderLetterhead();
     if(v==="settings") renderSettings();
+    if(v==="profile") renderProfile();
     if(v==="outsourcing") renderOutsourcing();
     if(v==="cashflow") renderCashflow();
     if(v==="projects") renderProjectsList();
@@ -186,7 +187,8 @@
     var PAGES = [
       ["dashboard","Dashboard","overview home stats"],["clients","Clients","customers"],["projects","Projects","services work"],
       ["invoices","Invoices","proforma tax pi"],["receipts","Receipts","payment received"],["outsourcing","Outsourcing","vendor"],
-      ["cashflow","Cash Flow","income outgoing expenses accounting"],["letterhead","Letterhead","print"],["settings","Settings","business gstin numbering prefix"]
+      ["cashflow","Cash Flow","income outgoing expenses accounting"],["letterhead","Letterhead","print"],["settings","Settings","business gstin numbering prefix"],
+      ["profile","My Profile","account password biometric fingerprint face login user"]
     ];
     var active = -1, items = [];
     function norm(x){ return String(x==null?"":x).toLowerCase(); }
@@ -1021,7 +1023,6 @@
   // ---------------- Settings ----------------
   function renderSettings(){
     var s = settings || BUSINESS_DEFAULT;
-    renderPasskeys();
     var html = ''+
       '<div class="field"><label>Legal business name</label><input id="sName" value="'+esc(s.legalName)+'"></div>'+
       '<div class="grid2">'+
@@ -1549,6 +1550,37 @@
   }
 
 
+
+  // ---------------- My Profile ----------------
+  function renderProfile(){
+    renderPasskeys();
+    api("api/profile.php").then(function(d){
+      var p = d.profile || {};
+      $("#pfName").value = p.display_name || ""; $("#pfUser").value = p.username || ""; $("#pfEmail").value = p.email || "";
+      $("#pfMeta").textContent = "Account created " + String(p.created_at||"").slice(0,10) + (p.last_login_at ? " · last sign-in " + String(p.last_login_at).slice(0,16).replace("T"," ") : "");
+    }).catch(function(err){ toast("Couldn't load profile: "+err.message); });
+  }
+  (function(){
+    var save = $("#pfSave"), pw = $("#pwSave");
+    if(save) save.addEventListener("click", function(){
+      save.disabled = true;
+      api("api/profile.php", {method:"POST", body: JSON.stringify({op:"update_profile", display_name:$("#pfName").value, username:$("#pfUser").value, email:$("#pfEmail").value})})
+        .then(function(d){
+          var p = d.profile||{}; window.__ADMIN_USER__ = p.display_name || p.username || ""; renderFoot();
+          toast("Profile saved");
+        }).catch(function(e){ toast(e.message); }).then(function(){ save.disabled = false; });
+    });
+    if(pw) pw.addEventListener("click", function(){
+      var n = $("#pwNew").value;
+      if(n !== $("#pwNew2").value){ toast("New passwords don't match"); return; }
+      pw.disabled = true;
+      api("api/profile.php", {method:"POST", body: JSON.stringify({op:"change_password", current:$("#pwCur").value, "new":n})})
+        .then(function(){ toast("Password updated"); ["#pwCur","#pwNew","#pwNew2"].forEach(function(s){ $(s).value = ""; });
+          return fetch("api/me.php",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(m){ if(m && m.csrf) window.__CSRF__ = m.csrf; }); })
+        .catch(function(e){ toast(e.message); }).then(function(){ pw.disabled = false; });
+    });
+  })();
+
   // ---------------- Biometric login (passkeys) ----------------
   function b2u(buf){ var s=""; new Uint8Array(buf).forEach(function(c){ s+=String.fromCharCode(c); }); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
   function u2b(str){ str=str.replace(/-/g,"+").replace(/_/g,"/"); while(str.length%4) str+="="; var bin=atob(str), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a.buffer; }
@@ -1606,7 +1638,9 @@
     var el = $("#sidebarFoot");
     if(!el) return;
     var user = window.__ADMIN_USER__ || "";
-    el.innerHTML = 'Signed in as <b>'+esc(user)+'</b><br><a href="logout.php">Log out</a>';
+    el.innerHTML = 'Signed in as <a href="#profile" data-goto="profile"><b>'+esc(user)+'</b></a><br><a href="logout.php">Log out</a>';
+    var link = el.querySelector("[data-goto]");
+    if(link) link.addEventListener("click", function(e){ e.preventDefault(); navTo("profile"); });
   }
 
   // ---------------- Init ----------------

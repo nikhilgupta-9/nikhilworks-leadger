@@ -17,6 +17,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
   session_start();
 }
 
+// Bring the database up to date with schema.sql (no-op when nothing changed).
+require_once __DIR__ . '/schema_sync.php';
+nw_schema_autosync();
+
 function current_admin_id() {
   return isset($_SESSION['admin_id']) ? (int)$_SESSION['admin_id'] : null;
 }

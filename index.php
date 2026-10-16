@@ -2,10 +2,11 @@
 require_once __DIR__ . '/includes/session.php';
 require_login_page();
 $pdo = db();
-$stmt = $pdo->prepare('SELECT username FROM admin_users WHERE id=?');
+$stmt = $pdo->prepare('SELECT username, display_name FROM admin_users WHERE id=?');
 $stmt->execute([current_admin_id()]);
 $admin = $stmt->fetch();
 $username = $admin ? $admin['username'] : '';
+$displayName = $admin && $admin['display_name'] !== '' ? $admin['display_name'] : $username;
 ?>
 <!doctype html>
 <html lang="en">
@@ -30,7 +31,7 @@ $username = $admin ? $admin['username'] : '';
 </head>
 <body>
 <?php include __DIR__ . '/partials/app-shell.html'; ?>
-<script>window.__CSRF__ = <?= json_encode(csrf_token()) ?>; window.__ADMIN_USER__ = <?= json_encode($username) ?>;</script>
+<script>window.__CSRF__ = <?= json_encode(csrf_token()) ?>; window.__ADMIN_USER__ = <?= json_encode($displayName) ?>;</script>
 <script>if("serviceWorker" in navigator){ window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); }); }</script>
 <script src="assets/app.js?v=<?= filemtime(__DIR__ . '/assets/app.js') ?>"></script>
 </body>

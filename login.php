@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($row && password_verify($password, $row['password_hash'])) {
       login_throttle_reset();
       login_admin($row['id']);
+      $pdo->prepare('UPDATE admin_users SET last_login_at = NOW() WHERE id = ?')->execute([$row['id']]);
       header('Location: /index.php');
       exit;
     } else {

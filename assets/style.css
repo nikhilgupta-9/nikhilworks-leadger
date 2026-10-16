@@ -108,6 +108,11 @@
   .view.active{display:block;}
 
 
+  /* ---------- My Profile ---------- */
+  .profile-grid{display:grid; gap:12px; max-width:680px;}
+  .pcard{padding:18px 20px;}
+  .pcard h3{font-size:14.5px; margin-bottom:10px;}
+
   /* ---------- Global search ---------- */
   .searchbar{position:sticky; top:0; z-index:15; margin:-18px -28px 14px; padding:12px 28px 6px; background:linear-gradient(var(--bg) 78%, transparent);}
   .search-field{
