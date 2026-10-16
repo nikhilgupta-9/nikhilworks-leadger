@@ -19,23 +19,7 @@
     --shadow:0 1px 2px rgba(10,40,40,.06), 0 8px 24px rgba(10,40,40,.06);
     --radius:14px;
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#0a1614;
-      --surface:#0f2422;
-      --surface-2:#123330;
-      --ink:#eaf3ec;
-      --muted:#93ab9f;
-      --line:#1e3d38;
-      --success:#5fd485;
-      --success-bg:#123a26;
-      --warning:#f0c15b;
-      --warning-bg:#3a2e10;
-      --danger:#f28b83;
-      --danger-bg:#3c1a17;
-      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
-    }
-  }
+  /* Light is the default on every device. Dark only applies if data-theme="dark" is set explicitly. */
   :root[data-theme="dark"]{
     --bg:#0a1614;
     --surface:#0f2422;
