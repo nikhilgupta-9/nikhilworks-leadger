@@ -27,3 +27,14 @@ Options -Indexes
   Header set X-Content-Type-Options "nosniff"
   Header set X-Frame-Options "SAMEORIGIN"
 </IfModule>
+
+# Installable app (PWA): correct type for the manifest, and always re-check the
+# service worker so updates reach phones promptly.
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "^sw\.js$">
+    Header set Cache-Control "no-cache, max-age=0"
+  </FilesMatch>
+</IfModule>
