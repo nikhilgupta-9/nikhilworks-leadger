@@ -117,7 +117,7 @@
     $all("#navlist button, #bottomNav button[data-view]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view")===name); });
     // "More" lights up when the current page lives in the drawer
     var more = $("#menuBtn");
-    if(more){ var inDrawer = !!$('#navlist button[data-view="'+name+'"]:not([data-primary])'); more.classList.toggle("active", inDrawer); }
+    if(more){ var inDrawer = !$('#bottomNav button[data-view="'+name+'"]') && !!$('#navlist button[data-view="'+name+'"]'); more.classList.toggle("active", inDrawer); }
     window.scrollTo(0,0);
   }
   function setDrawer(open){
@@ -127,8 +127,10 @@
     var mb = $("#menuBtn"); if(mb) mb.setAttribute("aria-expanded", open ? "true" : "false");
     document.body.classList.toggle("drawer-open", open);
   }
-  function navTo(v){
+  var NAV_VIEWS = ["dashboard","clients","projects","invoices","receipts","outsourcing","cashflow","letterhead","settings"];
+  function navTo(v, fromHash){
     setDrawer(false);
+    if(!fromHash && location.hash.slice(1) !== v){ try{ history.pushState(null, "", "#"+v); }catch(e){} }
     showView(v);
     if(v==="letterhead") renderLetterhead();
     if(v==="settings") renderSettings();
@@ -147,6 +149,11 @@
     var el = $(sel); if(el) el.addEventListener("click", function(){ setDrawer(false); });
   });
   document.addEventListener("keydown", function(e){ if(e.key==="Escape") setDrawer(false); });
+  // Back/forward and #links: each sidebar page has its own address (index.php#receipts)
+  window.addEventListener("popstate", function(){
+    var h = location.hash.slice(1);
+    navTo(NAV_VIEWS.indexOf(h) >= 0 ? h : "dashboard", true);
+  });
 
 
   // ---------------- Mobile: tables become stacked cards ----------------
@@ -169,6 +176,99 @@
     var main = $("main");
     if(main) new MutationObserver(function(){ if(!queued){ queued = true; requestAnimationFrame(labelAll); } })
       .observe(main, {childList:true, subtree:true});
+  })();
+
+
+  // ---------------- Global search ----------------
+  (function(){
+    var input = $("#globalSearch"), box = $("#searchResults");
+    if(!input || !box) return;
+    var PAGES = [
+      ["dashboard","Dashboard","overview home stats"],["clients","Clients","customers"],["projects","Projects","services work"],
+      ["invoices","Invoices","proforma tax pi"],["receipts","Receipts","payment received"],["outsourcing","Outsourcing","vendor"],
+      ["cashflow","Cash Flow","income outgoing expenses accounting"],["letterhead","Letterhead","print"],["settings","Settings","business gstin numbering prefix"]
+    ];
+    var active = -1, items = [];
+    function norm(x){ return String(x==null?"":x).toLowerCase(); }
+    function score(hay, words, first){
+      hay = norm(hay);
+      for(var i=0;i<words.length;i++) if(hay.indexOf(words[i])<0) return -1;
+      var sc = 1;
+      if(hay.indexOf(first)===0) sc += 3;
+      else if(hay.indexOf(" "+first)>=0 || hay.indexOf("/"+first)>=0) sc += 1;
+      return sc;
+    }
+    function build(q){
+      var words = norm(q).trim().split(/\s+/).filter(Boolean), out = [];
+      if(!words.length) return out;
+      var first = words[0];
+      PAGES.forEach(function(p){ var sc = score(p[1]+" "+p[2], words, first); if(sc>0) out.push({sc:sc+0.5, grp:"Pages", title:p[1], sub:"Open page", act:{page:p[0]}}); });
+      Object.keys(clients).forEach(function(id){
+        var c = clients[id], sc = score([c.name,c.contactName,c.phone,c.email,c.gstin].join(" "), words, first);
+        if(sc>0) out.push({sc:sc+1, grp:"Clients", title:c.name, sub:[c.contactName,c.phone].filter(Boolean).join(" · "), act:{client:id}});
+      });
+      Object.keys(projects).forEach(function(id){
+        var p = projects[id], cn = (clients[p.clientId]||{}).name||"", sc = score([p.title,cn,p.vendorName,p.status].join(" "), words, first);
+        if(sc>0) out.push({sc:sc+1, grp:"Projects", title:p.title, sub:cn+(p.totalAmount? " · "+fmtMoney(p.totalAmount):""), act:{project:id}});
+      });
+      Object.keys(invoices).forEach(function(id){
+        var v = invoices[id], sc = score([v.number,v.clientName,v.projectTitle,v.type].join(" "), words, first);
+        if(sc>0) out.push({sc:sc, grp:"Invoices", title:v.number, sub:(v.type==="tax"?"Tax":"Proforma")+" · "+(v.clientName||"")+" · "+fmtMoney(v.total), act:{invoice:id}});
+      });
+      Object.keys(receipts).forEach(function(id){
+        var r = receipts[id], sc = score([r.number,r.clientName,r.projectTitle,r.description,r.reference].join(" "), words, first);
+        if(sc>0) out.push({sc:sc, grp:"Receipts", title:r.number, sub:(r.clientName||"")+" · "+fmtMoney(r.amount), act:{receipt:id}});
+      });
+      out.sort(function(a,b){ return b.sc-a.sc; });
+      var counts = {}, res = [];
+      out.forEach(function(o){ counts[o.grp]=(counts[o.grp]||0)+1; if(counts[o.grp]<=5) res.push(o); });
+      var order = ["Pages","Clients","Projects","Invoices","Receipts"];
+      res.sort(function(a,b){ return order.indexOf(a.grp)-order.indexOf(b.grp); });
+      return res;
+    }
+    function close(){ box.classList.remove("open"); box.innerHTML=""; items=[]; active=-1; }
+    function paint(){
+      var q = input.value;
+      if(!q.trim()){ close(); return; }
+      items = build(q); active = items.length ? 0 : -1;
+      if(!items.length){ box.innerHTML = '<div class="sr-empty">No matches for "'+esc(q)+'"</div>'; box.classList.add("open"); return; }
+      var html = "", last = "";
+      items.forEach(function(it, i){
+        if(it.grp!==last){ html += '<div class="sr-group">'+it.grp+'</div>'; last = it.grp; }
+        html += '<div class="sr-item'+(i===active?" active":"")+'" role="option" data-i="'+i+'"><div class="sr-title">'+esc(it.title)+'</div><div class="sr-sub">'+esc(it.sub||"")+'</div></div>';
+      });
+      box.innerHTML = html; box.classList.add("open");
+    }
+    function mark(){
+      $all(".sr-item", box).forEach(function(el){ el.classList.toggle("active", Number(el.getAttribute("data-i"))===active); });
+      var el = $(".sr-item.active", box); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest"});
+    }
+    function go(it){
+      if(!it) return;
+      input.value = ""; close(); input.blur();
+      var a = it.act;
+      if(a.page) navTo(a.page);
+      else if(a.client) renderClientDetail(a.client);
+      else if(a.project) renderProjectDetail(a.project);
+      else if(a.invoice) renderInvoicePreview(a.invoice);
+      else if(a.receipt) renderReceiptPreview(a.receipt);
+    }
+    input.addEventListener("input", paint);
+    input.addEventListener("focus", paint);
+    input.addEventListener("keydown", function(e){
+      if(e.key==="ArrowDown" && items.length){ e.preventDefault(); active = (active+1)%items.length; mark(); }
+      else if(e.key==="ArrowUp" && items.length){ e.preventDefault(); active = (active-1+items.length)%items.length; mark(); }
+      else if(e.key==="Enter"){ e.preventDefault(); go(items[active]); }
+      else if(e.key==="Escape"){ input.value=""; close(); input.blur(); }
+    });
+    box.addEventListener("mousedown", function(e){ e.preventDefault(); });   // keep focus so the click lands
+    box.addEventListener("click", function(e){ var el = e.target.closest(".sr-item"); if(el) go(items[Number(el.getAttribute("data-i"))]); });
+    document.addEventListener("click", function(e){ if(!e.target.closest("#searchbar")) close(); });
+    // "/" or Ctrl/Cmd+K jumps to search from anywhere (unless typing in a field)
+    document.addEventListener("keydown", function(e){
+      var t = e.target, typing = t && (t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.tagName==="SELECT"||t.isContentEditable);
+      if((e.key==="/" && !typing) || ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="k")){ e.preventDefault(); input.focus(); input.select(); }
+    });
   })();
 
   // ---------------- Rendering: Dashboard ----------------
@@ -1463,6 +1563,8 @@
     $("#cashCategoryFilter").addEventListener("change", renderCashflow);
     loadAll().then(function(){
       renderAll();
+      var h = location.hash.slice(1);
+      if(NAV_VIEWS.indexOf(h) >= 0 && h !== "dashboard") navTo(h, true);
     }).catch(function(err){
       toast("Couldn't load data: " + err.message);
     });

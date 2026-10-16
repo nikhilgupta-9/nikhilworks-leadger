@@ -15,10 +15,10 @@
     <div class="drawer" id="drawer">
     <div class="drawer-head"><span>Menu</span><button type="button" id="drawerClose" aria-label="Close menu">&times;</button></div>
     <nav class="navlist" id="navlist">
-      <button data-view="dashboard" data-primary="1" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
-      <button data-view="clients" data-primary="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="7.5" r="2.5"/><path d="M15 13.5c2.9.3 5 2.6 5 6"/></svg>Clients</button>
-      <button data-view="projects" data-primary="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 15h10M7 18h6"/></svg>Projects</button>
-      <button data-view="invoices" data-primary="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h6M9 16h6M9 8h3"/></svg>Invoices</button>
+      <button data-view="dashboard" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard</button>
+      <button data-view="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="7.5" r="2.5"/><path d="M15 13.5c2.9.3 5 2.6 5 6"/></svg>Clients</button>
+      <button data-view="projects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="9" rx="1.5"/><path d="M7 15h10M7 18h6"/></svg>Projects</button>
+      <button data-view="invoices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l4 4v16H6z"/><path d="M15 2v4h4M9 12h6M9 16h6M9 8h3"/></svg>Invoices</button>
       <button data-view="receipts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 9h6M9 13h6"/></svg>Receipts</button>
       <button data-view="outsourcing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3l5 5-5 5M21 8H9M8 21l-5-5 5-5M3 16h12"/></svg>Outsourcing</button>
       <button data-view="cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg>Cash Flow</button>
@@ -39,6 +39,14 @@
 
 
   <main>
+    <div class="searchbar" id="searchbar">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="globalSearch" type="search" placeholder="Search clients, projects, invoices, receipts, pages…" autocomplete="off" spellcheck="false" aria-label="Search">
+        <kbd class="search-kbd" aria-hidden="true">/</kbd>
+      </div>
+      <div class="search-results" id="searchResults" role="listbox"></div>
+    </div>
     <!-- DASHBOARD -->
     <section class="view active" data-view="dashboard">
       <div class="topbar">
