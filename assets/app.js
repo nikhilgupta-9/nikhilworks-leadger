@@ -114,21 +114,62 @@
   // ---------------- View routing ----------------
   function showView(name){
     $all(".view").forEach(function(v){ v.classList.toggle("active", v.getAttribute("data-view")===name); });
-    $all("#navlist button").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view")===name); });
+    $all("#navlist button, #bottomNav button[data-view]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view")===name); });
+    // "More" lights up when the current page lives in the drawer
+    var more = $("#menuBtn");
+    if(more){ var inDrawer = !!$('#navlist button[data-view="'+name+'"]:not([data-primary])'); more.classList.toggle("active", inDrawer); }
     window.scrollTo(0,0);
   }
-  $all("#navlist button").forEach(function(b){
-    b.addEventListener("click", function(){
-      var v = b.getAttribute("data-view");
-      showView(v);
-      if(v==="letterhead") renderLetterhead();
-      if(v==="settings") renderSettings();
-      if(v==="outsourcing") renderOutsourcing();
-      if(v==="cashflow") renderCashflow();
-      if(v==="projects") renderProjectsList();
-      if(v==="receipts") renderReceiptsTable();
-    });
+  function setDrawer(open){
+    var d = $("#drawer"); if(!d) return;
+    d.classList.toggle("open", open);
+    var bd = $("#drawerBackdrop"); if(bd) bd.classList.toggle("open", open);
+    var mb = $("#menuBtn"); if(mb) mb.setAttribute("aria-expanded", open ? "true" : "false");
+    document.body.classList.toggle("drawer-open", open);
+  }
+  function navTo(v){
+    setDrawer(false);
+    showView(v);
+    if(v==="letterhead") renderLetterhead();
+    if(v==="settings") renderSettings();
+    if(v==="outsourcing") renderOutsourcing();
+    if(v==="cashflow") renderCashflow();
+    if(v==="projects") renderProjectsList();
+    if(v==="receipts") renderReceiptsTable();
+  }
+  $all("#navlist button, #bottomNav button[data-view]").forEach(function(b){
+    b.addEventListener("click", function(){ navTo(b.getAttribute("data-view")); });
   });
+  ["#menuBtn","#menuToggle"].forEach(function(sel){
+    var el = $(sel); if(el) el.addEventListener("click", function(){ setDrawer(!$("#drawer").classList.contains("open")); });
+  });
+  ["#drawerBackdrop","#drawerClose"].forEach(function(sel){
+    var el = $(sel); if(el) el.addEventListener("click", function(){ setDrawer(false); });
+  });
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape") setDrawer(false); });
+
+
+  // ---------------- Mobile: tables become stacked cards ----------------
+  // CSS (max-width:760px) lays each row out as a card; it needs each cell to
+  // know its column name, which we copy from the table header whenever the
+  // body is (re)rendered.
+  (function(){
+    function label(table){
+      var heads = Array.prototype.map.call(table.querySelectorAll("thead th"), function(th){ return th.textContent.trim(); });
+      Array.prototype.forEach.call(table.querySelectorAll("tbody tr"), function(tr){
+        if(tr.classList.contains("empty-row")) return;
+        Array.prototype.forEach.call(tr.children, function(td, i){
+          if(td.tagName==="TD" && heads[i] && td.getAttribute("data-label")!==heads[i]) td.setAttribute("data-label", heads[i]);
+        });
+      });
+    }
+    var queued = false;
+    function labelAll(){ queued = false; $all(".table-wrap table").forEach(label); }
+    labelAll();
+    var main = $("main");
+    if(main) new MutationObserver(function(){ if(!queued){ queued = true; requestAnimationFrame(labelAll); } })
+      .observe(main, {childList:true, subtree:true});
+  })();
 
   // ---------------- Rendering: Dashboard ----------------
   function renderAll(){
