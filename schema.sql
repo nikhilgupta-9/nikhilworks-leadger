@@ -201,3 +201,18 @@ VALUES (1, 'NikhilWorks', 'WEB DEVELOPMENT & SEO', 'Nikhil Gupta', '07DEUPG7632R
   'Nikhil Gupta', '188368552640', 'INDB0002234', 'IndusInd Bank', 'DLF Tower, Moti Nagar, Delhi',
   7, 'NW', 1, 'PF', 1)
 ON DUPLICATE KEY UPDATE id = id;
+
+CREATE TABLE IF NOT EXISTS passkeys (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  admin_id INT NOT NULL,
+  credential_id VARCHAR(255) NOT NULL,
+  public_key TEXT NOT NULL,
+  alg INT NOT NULL,
+  sign_count INT UNSIGNED NOT NULL DEFAULT 0,
+  label VARCHAR(100) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME NULL,
+  UNIQUE KEY uq_passkey_credential (credential_id),
+  KEY idx_passkey_admin (admin_id),
+  CONSTRAINT fk_passkey_admin FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

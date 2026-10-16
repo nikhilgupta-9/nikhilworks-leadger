@@ -1021,6 +1021,7 @@
   // ---------------- Settings ----------------
   function renderSettings(){
     var s = settings || BUSINESS_DEFAULT;
+    renderPasskeys();
     var html = ''+
       '<div class="field"><label>Legal business name</label><input id="sName" value="'+esc(s.legalName)+'"></div>'+
       '<div class="grid2">'+
@@ -1546,6 +1547,59 @@
       .then(function(){ toast("Settings saved"); return refreshAndRender(); })
       .catch(function(err){ toast("Couldn't save: "+err.message); });
   }
+
+
+  // ---------------- Biometric login (passkeys) ----------------
+  function b2u(buf){ var s=""; new Uint8Array(buf).forEach(function(c){ s+=String.fromCharCode(c); }); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+  function u2b(str){ str=str.replace(/-/g,"+").replace(/_/g,"/"); while(str.length%4) str+="="; var bin=atob(str), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a.buffer; }
+  function guessDeviceName(){
+    var ua = navigator.userAgent||"";
+    if(/iPhone/.test(ua)) return "iPhone"; if(/iPad/.test(ua)) return "iPad";
+    if(/Android/.test(ua)) return "Android phone"; if(/Windows/.test(ua)) return "Windows PC";
+    if(/Mac/.test(ua)) return "Mac"; return "This device";
+  }
+  function renderPasskeys(){
+    var list = $("#passkeyList"), add = $("#passkeyAdd");
+    if(!list || !add) return;
+    var supported = !!(window.PublicKeyCredential && navigator.credentials);
+    add.style.display = supported ? "" : "none";
+    if(!supported){ list.innerHTML = '<div class="hint">This browser doesn\'t support biometric login.</div>'; return; }
+    api("api/passkey.php").then(function(d){
+      var rows = d.passkeys || [];
+      list.innerHTML = rows.length ? rows.map(function(r){
+        return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--line);">'+
+          '<div><b>'+esc(r.label)+'</b><div class="hint">Added '+esc(String(r.created_at||"").slice(0,10))+(r.last_used_at? ' · last used '+esc(String(r.last_used_at).slice(0,10)) : ' · not used yet')+'</div></div>'+
+          '<button class="btn btn-ghost btn-sm" data-passkey-del="'+r.id+'">Remove</button></div>';
+      }).join("") : '<div class="hint">No device enabled yet.</div>';
+    }).catch(function(err){ list.innerHTML = '<div class="hint" style="color:var(--danger)">'+esc(err.message)+'</div>'; add.style.display = "none"; });
+  }
+  function enablePasskey(){
+    var btn = $("#passkeyAdd"); btn.disabled = true;
+    api("api/passkey.php", {method:"POST", body: JSON.stringify({op:"register_options"})}).then(function(o){
+      var pk = o.publicKey;
+      pk.challenge = u2b(pk.challenge); pk.user.id = u2b(pk.user.id);
+      (pk.excludeCredentials||[]).forEach(function(c){ c.id = u2b(c.id); });
+      return navigator.credentials.create({publicKey: pk});
+    }).then(function(c){
+      return api("api/passkey.php", {method:"POST", body: JSON.stringify({op:"register_verify", label: guessDeviceName(), credential:{ id:c.id, response:{
+        clientDataJSON:b2u(c.response.clientDataJSON), attestationObject:b2u(c.response.attestationObject) } }})});
+    }).then(function(){ toast("Biometric login enabled on this device"); renderPasskeys(); })
+    .catch(function(e){
+      if(e && (e.name==="NotAllowedError" || e.name==="AbortError")) toast("Cancelled");
+      else if(e && e.name==="InvalidStateError") toast("This device is already enabled");
+      else toast("Couldn't enable: "+((e&&e.message)||"unknown error"));
+    }).then(function(){ btn.disabled = false; });
+  }
+  (function(){
+    var add = $("#passkeyAdd"); if(add) add.addEventListener("click", enablePasskey);
+    var list = $("#passkeyList");
+    if(list) list.addEventListener("click", function(e){
+      var b = e.target.closest("[data-passkey-del]"); if(!b) return;
+      if(!confirm("Remove biometric login for this device?")) return;
+      api("api/passkey.php", {method:"POST", body: JSON.stringify({op:"delete", id: Number(b.getAttribute("data-passkey-del"))})})
+        .then(function(){ toast("Removed"); renderPasskeys(); }).catch(function(err){ toast(err.message); });
+    });
+  })();
 
   // ---------------- Sidebar footer (who's logged in) ----------------
   function renderFoot(){

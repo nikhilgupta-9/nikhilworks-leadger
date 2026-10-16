@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   input{width:100%; padding:10px 11px; border-radius:9px; border:1px solid #dde6da; font-size:14px; box-sizing:border-box;}
   button{width:100%; margin-top:22px; padding:11px; border:none; border-radius:10px; background:#104041; color:#fff; font-weight:800; font-size:14px; cursor:pointer;}
   .error{background:#faeaea; color:#c4433a; padding:10px 12px; border-radius:8px; font-size:13px; margin-top:14px;}
+  .bio{background:#adff1c; color:#173a05; margin-top:10px; display:none; align-items:center; justify-content:center; gap:8px;}
+  .or{display:none; align-items:center; gap:10px; color:#93ab9f; font-size:12px; margin-top:18px;}
+  .or::before,.or::after{content:""; flex:1; height:1px; background:#dde6da;}
   .ok{background:#e5f5e6; color:#2f8f4e; padding:10px 12px; border-radius:8px; font-size:13px; margin-top:14px;}
 </style>
 </head>
@@ -86,8 +89,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($error): ?><div class="error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
         <button type="submit">Log in</button>
       </form>
+      <div class="or" id="bioOr">or</div>
+      <button type="button" class="bio" id="bioBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 11v3a6 6 0 01-1 3.3M8 14a4 4 0 118 0c0 2-.4 3.6-1.3 5M5 12a7 7 0 0114 0c0 1.5-.1 3-.5 4.5M3.5 9A9 9 0 0120.5 9"/></svg>
+        Log in with fingerprint / face
+      </button>
+      <div class="error" id="bioErr" style="display:none"></div>
     <?php endif; ?>
   </div>
+<script>
+(function(){
+  var btn = document.getElementById("bioBtn"), or = document.getElementById("bioOr"), err = document.getElementById("bioErr");
+  if(!btn || !window.PublicKeyCredential || !navigator.credentials) return;
+  btn.style.display = "flex"; or.style.display = "flex";
+  function b2u(buf){ var s=""; new Uint8Array(buf).forEach(function(c){ s+=String.fromCharCode(c); }); return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+  function u2b(str){ str=str.replace(/-/g,"+").replace(/_/g,"/"); while(str.length%4) str+="="; var bin=atob(str), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a.buffer; }
+  function post(body){ return fetch("api/passkey.php",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok) throw new Error(d.message||"Request failed"); return d; }); }); }
+  function fail(m){ err.textContent = m; err.style.display = "block"; btn.disabled = false; }
+  btn.addEventListener("click", function(){
+    err.style.display = "none"; btn.disabled = true;
+    post({op:"login_options"}).then(function(o){
+      var pk = o.publicKey; pk.challenge = u2b(pk.challenge);
+      return navigator.credentials.get({publicKey: pk});
+    }).then(function(c){
+      return post({op:"login_verify", credential:{ id:c.id, response:{
+        clientDataJSON:b2u(c.response.clientDataJSON), authenticatorData:b2u(c.response.authenticatorData), signature:b2u(c.response.signature) } }});
+    }).then(function(d){ location.href = d.redirect || "index.php"; })
+    .catch(function(e){
+      if(e && (e.name==="NotAllowedError" || e.name==="AbortError")) return fail("Cancelled. Try again, or log in with your password.");
+      fail((e && e.message) || "Biometric login failed.");
+    });
+  });
+})();
+</script>
 <script>if("serviceWorker" in navigator){ window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); }); }</script>
 </body>
 </html>
