@@ -194,8 +194,6 @@
         <div><h1>Cash Flow</h1><div class="sub">Track monthly business income and outgoing money</div></div>
         <div class="toolbar-actions">
           <label class="month-picker">Month <input type="month" id="cashMonth"></label>
-          <label class="month-picker"><input type="checkbox" id="cashAllMonths" style="width:auto;"> All months</label>
-          <label class="month-picker">Show <select id="cashScope"><option value="">All clients &amp; projects</option></select></label>
           <label class="month-picker">Category <select id="cashCategoryFilter"><option value="">All categories</option></select></label>
           <button class="btn btn-accent" data-action="new-cash-entry">+ Add Entry</button>
         </div>
@@ -209,16 +207,6 @@
         <table>
           <thead><tr><th>Date</th><th>Entry</th><th>Client</th><th>Category</th><th>Type</th><th>Plan</th><th>Note</th><th class="num">Amount</th><th></th></tr></thead>
           <tbody id="cashEntriesBody"><tr class="empty-row"><td colspan="9">Loading…</td></tr></tbody>
-        </table>
-      </div>
-      <div class="hint" style="margin-top:8px;">Client payments and vendor payments recorded on a project appear here automatically. Income added here with a project selected is saved as that project's payment, so its balance updates everywhere.</div>
-
-      <div class="section-title">Balance sheet — project cost vs. money received</div>
-      <div class="stat-row" id="bsCards"></div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Project</th><th>Client</th><th class="num">Project cost</th><th class="num">Received</th><th class="num">Pending</th><th class="num">Vendor cost</th><th class="num">Vendor paid</th><th class="num">Your margin</th></tr></thead>
-          <tbody id="bsBody"><tr class="empty-row"><td colspan="8">Loading…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -283,10 +271,7 @@
         <div class="field"><label>Type</label><select id="ceType"><option value="income">Income / Incoming</option><option value="expense">Expense / Outgoing</option></select></div>
         <div class="field"><label>Planned status</label><select id="cePlanStatus"><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></div>
       </div>
-      <div class="field"><label id="ceClientLabel">Which client is this payment from?</label><select id="ceClientId"></select></div>
-      <div class="field" id="ceProjectField" style="display:none;"><label>Which project? (optional)</label><select id="ceProjectId"><option value="">— No specific project —</option></select></div>
-      <div class="hint" id="ceProjectHint" style="display:none; margin:-4px 0 12px; padding:9px 11px; background:var(--surface-2); border-radius:9px;"></div>
-      <div class="field" id="ceModeField" style="display:none;"><label>Payment mode</label><select id="ceMode"><option>Bank Transfer</option><option>UPI</option><option>Cash</option><option>Cheque</option><option>Card</option><option>Other</option></select></div>
+      <div class="field"><label>Link client (optional)</label><select id="ceClientId"><option value="">Not linked to a client</option></select></div>
       <div class="field"><label>Title</label><input id="ceTitle" placeholder="e.g. Client payment, office rent, software subscription"></div>
       <div class="grid2">
         <div class="field"><label>Amount (₹)</label><input type="number" min="0" step="0.01" id="ceAmount" placeholder="5000"></div>

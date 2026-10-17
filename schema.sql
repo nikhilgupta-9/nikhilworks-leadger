@@ -130,7 +130,6 @@ CREATE TABLE IF NOT EXISTS vendor_payments (
 CREATE TABLE IF NOT EXISTS cash_entries (
   id INT AUTO_INCREMENT PRIMARY KEY,
   client_id INT NULL,
-  project_id INT NULL,
   entry_type ENUM('income','expense') NOT NULL,
   title VARCHAR(190) NOT NULL,
   category VARCHAR(80) NOT NULL DEFAULT '',
@@ -142,9 +141,7 @@ CREATE TABLE IF NOT EXISTS cash_entries (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_cash_entries_month (month),
   INDEX idx_cash_entries_date (entry_date),
-  INDEX idx_cash_entries_project (project_id),
-  CONSTRAINT fk_cash_entries_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
-  CONSTRAINT fk_cash_entries_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+  CONSTRAINT fk_cash_entries_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS invoices (
