@@ -2,6 +2,7 @@
   "use strict";
 
   var LOGO_FULL = "assets/img/logo-full.png";
+  var LOGO_ICON = "assets/img/logo-icon.png";
 
   // ---------------- State ----------------
   var clients = {};          // clientId(string) -> data
@@ -739,81 +740,49 @@
     var client = clients[r.clientId] || {};
     $("#receiptPreviewTitle").textContent = "Payment Receipt " + r.number;
 
-    var attnLine = client.contactName ? ('Attn: '+esc(client.contactName)+(client.contactTitle?' ('+esc(client.contactTitle)+')':'')+'<br>') : '';
-    var detailRows =
-      '<div class="inv-bank-row"><span class="lbl">Date Received</span><span class="val">'+fmtDate(r.date)+'</span></div>'+
-      '<div class="inv-bank-row"><span class="lbl">Payment Mode</span><span class="val">'+esc(r.mode)+'</span></div>'+
-      (r.reference ? '<div class="inv-bank-row"><span class="lbl">Reference No.</span><span class="val">'+esc(r.reference)+'</span></div>' : '')+
-      (r.projectTitle ? '<div class="inv-bank-row"><span class="lbl">Project</span><span class="val">'+esc(r.projectTitle)+'</span></div>' : '');
-    var notesList = ['This receipt acknowledges the payment received, as detailed above.'];
-    if(r.mode === "Cheque") notesList.push('Payment by cheque is subject to realisation.');
-    notesList.push('Please keep this receipt for your records.');
+    var longDate = function(iso){ var d = new Date((iso||"")+"T00:00:00"); return isNaN(d) ? (iso||"—") : d.toLocaleDateString("en-IN", {day:"numeric", month:"long", year:"numeric"}); };
+    var meta = function(l, v){ return v ? '<div class="rp-meta-row"><span>'+l+'</span><b>'+esc(v)+'</b></div>' : ''; };
+    var lines = function(arr){ return arr.filter(Boolean).map(esc).join("<br>"); };
+    var billLines = lines([
+      client.name || r.clientName || "",
+      client.address || "",
+      client.contactName ? ("Attn: "+client.contactName+(client.contactTitle?" ("+client.contactTitle+")":"")) : "",
+      client.phone || "", client.email || ""
+    ]);
+    var fromLines = lines([s.address, s.phone, s.email, s.website]);
+    var desc = r.description || r.projectTitle || "Payment received";
 
     var html = ''+
-      '<div class="inv-bar top"></div>'+
-      '<div class="inv-wrap">'+
-        '<div class="inv-head">'+
-          '<div>'+
-            '<div class="nw-badge">NW</div>'+
-            '<div class="inv-brand-name">'+esc(s.legalName)+'</div>'+
-            '<div class="inv-brand-tagline">'+esc(s.tagline)+'</div>'+
-          '</div>'+
-          '<div class="inv-title-block">'+
-            '<h2>PAYMENT RECEIPT</h2>'+
-            '<div class="inv-title-underline"></div>'+
-            '<div class="inv-meta">'+
-              '<div><span>Receipt No:</span><b>'+esc(r.number)+'</b></div>'+
-              '<div><span>Date:</span><b>'+fmtDate(r.date)+'</b></div>'+
-            '</div>'+
-          '</div>'+
+      '<div class="rp">'+
+        '<div class="rp-top">'+
+          '<h2>Receipt</h2>'+
+          '<img class="rp-logo" src="'+LOGO_ICON+'" alt="">'+
         '</div>'+
-
-        '<div class="fb-box">'+
-          '<div class="fb-col">'+
-            '<div class="fb-label">Received By</div>'+
-            '<div class="fb-name">'+esc(s.legalName)+(s.ownerName?' ('+esc(s.ownerName)+')':'')+'</div>'+
-            '<div class="fb-detail">'+esc(s.address)+'<br>Phone: '+esc(s.phone)+'<br>Email: '+esc(s.email)+'</div>'+
-          '</div>'+
-          '<div class="fb-col">'+
-            '<div class="fb-label">Received From</div>'+
-            '<div class="fb-name">'+esc(client.name || r.clientName || "—")+'</div>'+
-            '<div class="fb-detail">'+esc(client.address||"")+(client.address?'<br>':'')+attnLine+
-              (client.phone?('Mob: '+esc(client.phone)+'<br>'):'')+
-              (client.email?('Email: '+esc(client.email)+'<br>'):'')+
-            '</div>'+
-          '</div>'+
+        '<div class="rp-meta">'+
+          meta("Receipt number", r.number)+
+          meta("Date paid", longDate(r.date))+
+          meta("Payment method", r.mode)+
+          meta("Reference", r.reference)+
+          meta("Project", r.projectTitle)+
         '</div>'+
-
-        '<table class="inv-table">'+
-          '<thead><tr><th class="sno">S.No</th><th>Payment Towards</th><th class="num">Amount (₹)</th></tr></thead>'+
-          '<tbody><tr><td class="num">1</td><td class="desc">'+esc(r.description || r.projectTitle || "Payment received")+'</td><td class="num">'+fmtMoneyDoc(r.amount)+'</td></tr></tbody>'+
+        '<div class="rp-parties">'+
+          '<div><div class="rp-h">'+esc(s.legalName)+'</div><div class="rp-t">'+fromLines+'</div></div>'+
+          '<div><div class="rp-h">Bill to</div><div class="rp-t">'+billLines+'</div></div>'+
+        '</div>'+
+        '<div class="rp-paid">'+fmtMoneyDoc(r.amount)+' paid on '+longDate(r.date)+'</div>'+
+        '<table class="rp-table">'+
+          '<thead><tr><th>Description</th><th class="rp-qty">Qty</th><th class="rp-amt">Amount</th></tr></thead>'+
+          '<tbody><tr><td>'+esc(desc)+'</td><td class="rp-qty">1</td><td class="rp-amt">'+fmtMoneyDoc(r.amount)+'</td></tr></tbody>'+
         '</table>'+
-
-        '<div class="inv-totals-wrap"><div class="inv-totals">'+
-          '<div class="inv-advance-banner rc-banner"><span>Total Amount Received</span><span class="val">'+fmtMoneyDoc(r.amount)+'</span></div>'+
-        '</div></div>'+
-
-        '<div class="inv-terms-box"><b>Amount in words:</b> '+esc(amountInWordsINR(r.amount))+'</div>'+
-        (r.notes ? '<div class="inv-terms-box" style="margin-top:-8px;"><b>Note:</b> '+esc(r.notes)+'</div>' : '')+
-
-        '<div class="inv-lower">'+
-          '<div class="inv-lower-box">'+
-            '<div class="inv-lower-label">Payment Details</div>'+detailRows+
-          '</div>'+
-          '<div class="inv-lower-box">'+
-            '<div class="inv-lower-label">Notes</div>'+
-            '<ol class="inv-notes-list">'+notesList.map(function(t){ return '<li>'+esc(t)+'</li>'; }).join("")+'</ol>'+
-          '</div>'+
+        '<div class="rp-totals">'+
+          '<div><span>Total</span><span>'+fmtMoneyDoc(r.amount)+'</span></div>'+
+          '<div class="rp-strong"><span>Amount paid</span><span>'+fmtMoneyDoc(r.amount)+'</span></div>'+
         '</div>'+
-
-        '<div class="inv-sign">'+
-          '<div></div>'+
-          '<div>For '+esc(s.legalName)+(s.ownerName?' — '+esc(s.ownerName):'')+'</div>'+
-        '</div>'+
-
-        '<div class="inv-doc-foot">'+esc(s.website)+' | '+esc(s.phone)+' | '+esc(s.email)+'</div>'+
-      '</div>'+
-      '<div class="inv-bar bottom"></div>';
+        '<div class="rp-words">Amount in words: '+esc(amountInWordsINR(r.amount))+'</div>'+
+        (r.notes ? '<div class="rp-note"><b>Note</b><br>'+esc(r.notes)+'</div>' : '')+
+        '<div class="rp-foot">This receipt acknowledges payment received'+(r.mode==="Cheque"?' (cheque payments are subject to realisation)':'')+'. '+
+          'Questions about this receipt? Contact '+esc(s.email || s.phone || s.legalName)+'.</div>'+
+      '</div>';
     $("#receiptPrintArea").innerHTML = html;
     showView("receipt-preview");
   }
@@ -1642,6 +1611,17 @@
     var link = el.querySelector("[data-goto]");
     if(link) link.addEventListener("click", function(e){ e.preventDefault(); navTo("profile"); });
   }
+
+  // "Save as PDF" names the file after the page title: use the document number.
+  (function(){
+    var saved = null;
+    window.addEventListener("beforeprint", function(){
+      var rc = currentReceiptId && receipts[currentReceiptId];
+      var rcView = $('.view[data-view="receipt-preview"]');
+      if(rc && rcView && rcView.classList.contains("active")){ saved = document.title; document.title = "Receipt " + String(rc.number).replace(/[\\/]/g, "-"); }
+    });
+    window.addEventListener("afterprint", function(){ if(saved !== null){ document.title = saved; saved = null; } });
+  })();
 
   // ---------------- Init ----------------
   function init(){
