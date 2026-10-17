@@ -430,6 +430,7 @@
       '<div class="detail-head">'+
         '<div><h1>'+esc(c.name)+'</h1><div class="sub" style="color:var(--muted); margin-top:4px;">'+t.count+' project(s) · '+esc(c.state||"—")+'</div></div>'+
         '<div style="display:flex; gap:10px; flex-wrap:wrap;">'+
+          '<button class="btn btn-ghost btn-sm" data-action="cashflow-for" data-scope="c:'+id+'">Cash flow</button>'+
           '<button class="btn btn-ghost btn-sm" data-action="edit-client" data-id="'+id+'">Edit Client</button>'+
           '<button class="btn btn-primary btn-sm" data-action="new-project" data-client-id="'+id+'">+ New Project</button>'+
           '<button class="btn btn-accent btn-sm" data-action="invoice-for-client" data-id="'+id+'">+ Generate Invoice</button>'+
@@ -510,6 +511,7 @@
       '<div class="detail-head">'+
         '<div><h1>'+esc(p.title)+'</h1><div class="sub" style="color:var(--muted); margin-top:4px;">'+esc(client.name||"—")+' · Started '+fmtDate(p.startDate)+'</div></div>'+
         '<div style="display:flex; gap:10px; flex-wrap:wrap;">'+
+          '<button class="btn btn-ghost btn-sm" data-action="cashflow-for" data-scope="p:'+id+'">Cash flow</button>'+
           '<button class="btn btn-ghost btn-sm" data-action="edit-project" data-id="'+id+'">Edit</button>'+
           '<button class="btn btn-primary btn-sm" data-action="record-payment" data-project-id="'+id+'">+ Record Payment</button>'+
           '<button class="btn btn-accent btn-sm" data-action="invoice-for-project" data-client-id="'+p.clientId+'" data-project-id="'+id+'">+ Generate Invoice</button>'+
@@ -903,53 +905,177 @@
       ? '<span class="pill pill-warning"><span class="pill-dot"></span>Unplanned</span>'
       : '<span class="pill pill-muted"><span class="pill-dot"></span>Planned</span>';
   }
+  // Everything that moved money in the selected view, from ONE place each:
+  //  - cash_entries       -> general income / expenses (rent, subscriptions…)
+  //  - project payments   -> money clients paid you (read straight from the project)
+  //  - vendor payments    -> money you paid outsourcing vendors
+  function cashRows(){
+    var rows = [];
+    cashEntries.forEach(function(e){
+      rows.push({src:"entry", id:e.id, date:e.date, month:e.month, title:e.title, clientId:e.clientId, projectId:e.projectId,
+        clientName:e.clientName, projectTitle:e.projectTitle, category:e.category, type:e.entryType, plan:e.planStatus, note:e.note, amount:e.amount});
+    });
+    Object.keys(projectPayments).forEach(function(pid){
+      var p = projects[pid]; if(!p) return; var cl = clients[p.clientId] || {};
+      projectPayments[pid].forEach(function(pay){
+        rows.push({src:"payment", id:pay.id, date:pay.date, month:String(pay.date||"").slice(0,7),
+          title:"Client payment"+(pay.month ? " ("+fmtMonth(pay.month)+")" : ""), clientId:p.clientId, projectId:pid, clientName:cl.name||"", projectTitle:p.title,
+          category:"Project payment", type:"income", plan:"planned", note:pay.note||"", amount:pay.amount});
+      });
+    });
+    Object.keys(vendorPayments).forEach(function(pid){
+      var p = projects[pid]; if(!p) return; var cl = clients[p.clientId] || {};
+      vendorPayments[pid].forEach(function(v){
+        rows.push({src:"vendor", id:v.id, date:v.date, month:String(v.date||"").slice(0,7),
+          title:"Vendor payment — "+(p.vendorName||"outsourcing"), clientId:p.clientId, projectId:pid, clientName:cl.name||"", projectTitle:p.title,
+          category:"Outsourcing", type:"expense", plan:"planned", note:v.note||"", amount:v.amount});
+      });
+    });
+    rows.sort(function(a,b){ return (b.date||"").localeCompare(a.date||""); });
+    return rows;
+  }
+  function cashScopeMatch(scope, clientId, projectId){
+    if(!scope) return true;
+    var kind = scope.charAt(0), id = scope.slice(2);
+    return kind === "c" ? String(clientId) === id : String(projectId) === id;
+  }
+  function buildCashScopeOptions(selected){
+    var sel = $("#cashScope"), html = '<option value="">All clients &amp; projects</option>';
+    Object.keys(clients).sort(function(a,b){ return clients[a].name.localeCompare(clients[b].name); }).forEach(function(cid){
+      html += '<option value="c:'+cid+'">'+esc(clients[cid].name)+' (all projects)</option>';
+      projectsForClient(cid).forEach(function(p){ html += '<option value="p:'+p.id+'">&nbsp;&nbsp;↳ '+esc(p.title)+'</option>'; });
+    });
+    sel.innerHTML = html;
+    sel.value = selected || "";
+    if(sel.value !== (selected||"")) sel.value = "";
+  }
+
   function renderCashflow(){
     var monthInput = $("#cashMonth");
     if(!monthInput) return;
     if(!monthInput.value) monthInput.value = currentMonthISO();
+    var allMonths = $("#cashAllMonths").checked;
+    monthInput.disabled = allMonths;
     var selectedMonth = monthInput.value;
+    buildCashScopeOptions($("#cashScope").value);
+    var scope = $("#cashScope").value;
     var categoryFilter = $("#cashCategoryFilter");
     var selectedCategory = categoryFilter.value;
-    var categories = cashEntries.filter(function(entry){ return entry.month === selectedMonth; }).map(function(entry){ return entry.category; }).filter(function(category){ return category; })
-      .filter(function(category, index, list){ return list.indexOf(category) === index; }).sort(function(a,b){ return a.localeCompare(b); });
-    categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(function(category){ return '<option value="'+esc(category)+'">'+esc(category)+'</option>'; }).join("");
+
+    var all = cashRows().filter(function(r){ return (allMonths || r.month === selectedMonth) && cashScopeMatch(scope, r.clientId, r.projectId); });
+    var categories = all.map(function(r){ return r.category; }).filter(function(c, i, l){ return c && l.indexOf(c) === i; }).sort(function(a,b){ return a.localeCompare(b); });
+    categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join("");
     categoryFilter.value = categories.indexOf(selectedCategory) !== -1 ? selectedCategory : "";
     selectedCategory = categoryFilter.value;
-    var list = cashEntries.filter(function(entry){ return entry.month === selectedMonth && (!selectedCategory || entry.category === selectedCategory); });
-    var income = 0, expense = 0, planned = 0, unplanned = 0;
-    list.forEach(function(entry){
-      if(entry.entryType === "income") income += entry.amount;
-      else expense += entry.amount;
-      if(entry.planStatus === "planned") planned += entry.amount; else unplanned += entry.amount;
+    var list = all.filter(function(r){ return !selectedCategory || r.category === selectedCategory; });
+
+    var income = 0, expense = 0, planned = 0, unplanned = 0, incN = 0;
+    list.forEach(function(r){
+      if(r.type === "income"){ income += r.amount; incN++; } else expense += r.amount;
+      if(r.plan === "planned") planned += r.amount; else unplanned += r.amount;
     });
     var net = income - expense;
+    var periodLabel = allMonths ? "All months" : fmtMonth(selectedMonth);
     $("#cashIncome").textContent = fmtMoney(income);
-    $("#cashIncomeSub").textContent = list.filter(function(e){ return e.entryType === "income"; }).length + " income entr" + (list.filter(function(e){ return e.entryType === "income"; }).length === 1 ? "y" : "ies");
+    $("#cashIncomeSub").textContent = incN + " income entr" + (incN === 1 ? "y" : "ies");
     $("#cashExpense").textContent = fmtMoney(expense);
     $("#cashExpenseSub").textContent = fmtMoney(unplanned) + " unplanned";
     $("#cashNet").textContent = fmtMoney(net);
     $("#cashNet").style.color = net < 0 ? "var(--danger)" : "var(--success)";
-    $("#cashNetSub").textContent = fmtMonth(selectedMonth) + " · " + fmtMoney(planned) + " planned";
+    $("#cashNetSub").textContent = periodLabel + " · " + fmtMoney(planned) + " planned";
 
     var body = $("#cashEntriesBody");
     if(!list.length){
-      body.innerHTML = '<tr class="empty-row"><td colspan="9">No cash-flow entries for '+esc(fmtMonth(selectedMonth))+'. Add your first entry.</td></tr>';
-      return;
+      body.innerHTML = '<tr class="empty-row"><td colspan="9">No cash-flow entries for '+esc(periodLabel)+'. Add your first entry.</td></tr>';
+    } else {
+      body.innerHTML = list.map(function(r){
+        var who = esc(r.clientName || "—") + (r.projectTitle ? '<div class="muted" style="font-size:11.5px;">'+esc(r.projectTitle)+'</div>' : '');
+        var actions;
+        if(r.src === "entry") actions = '<button class="btn btn-ghost btn-sm" data-action="edit-cash-entry" data-id="'+r.id+'">Edit</button><button class="icon-btn" title="Delete entry" data-action="delete-cash-entry" data-id="'+r.id+'">×</button>';
+        else actions = '<button class="btn btn-ghost btn-sm" data-open-project="'+r.projectId+'">Open project</button><button class="icon-btn" title="Delete this payment" data-action="'+(r.src==="payment"?"delete-payment-row":"delete-vendor-row")+'" data-id="'+r.id+'">×</button>';
+        return '<tr>'+
+          '<td>'+fmtDate(r.date)+'</td>'+
+          '<td class="name-cell">'+esc(r.title)+'</td>'+
+          '<td>'+who+'</td>'+
+          '<td>'+esc(r.category || "—")+'</td>'+
+          '<td>'+cashTypePill(r.type)+'</td>'+
+          '<td>'+planStatusPill(r.plan)+'</td>'+
+          '<td class="muted">'+esc(r.note || "—")+'</td>'+
+          '<td class="num" style="font-weight:700; color:'+(r.type === "income" ? "var(--success)" : "var(--danger)")+';">'+(r.type === "income" ? "+" : "−")+fmtMoney(r.amount)+'</td>'+
+          '<td><div class="row-actions">'+actions+'</div></td>'+
+        '</tr>';
+      }).join("");
     }
-    body.innerHTML = list.map(function(entry){
-      return '<tr>'+
-        '<td>'+fmtDate(entry.date)+'</td>'+
-        '<td class="name-cell">'+esc(entry.title)+'</td>'+
-        '<td>'+esc(entry.clientName || "—")+'</td>'+
-        '<td>'+esc(entry.category || "—")+'</td>'+
-        '<td>'+cashTypePill(entry.entryType)+'</td>'+
-        '<td>'+planStatusPill(entry.planStatus)+'</td>'+
-        '<td class="muted">'+esc(entry.note || "—")+'</td>'+
-        '<td class="num" style="font-weight:700; color:'+(entry.entryType === "income" ? "var(--success)" : "var(--danger)")+';">'+(entry.entryType === "income" ? "+" : "−")+fmtMoney(entry.amount)+'</td>'+
-        '<td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-action="edit-cash-entry" data-id="'+entry.id+'">Edit</button><button class="icon-btn" title="Delete entry" data-action="delete-cash-entry" data-id="'+entry.id+'">×</button></div></td>'+
+    renderBalanceSheet(scope);
+  }
+
+  // Project cost vs. money actually received, per project (all time) — the "balance sheet".
+  function renderBalanceSheet(scope){
+    var ids = Object.keys(projects).filter(function(pid){ return cashScopeMatch(scope, projects[pid].clientId, pid); });
+    var tot = {cost:0, paid:0, vCost:0, vPaid:0};
+    var rows = ids.map(function(pid){
+      var p = projects[pid], cost = Number(p.totalAmount)||0, paid = calcProjectPaid(pid);
+      var vCost = p.isOutsourced ? (Number(p.vendorCost)||0) : 0, vPaid = calcVendorPaid(pid);
+      tot.cost += cost; tot.paid += paid; tot.vCost += vCost; tot.vPaid += vPaid;
+      return {pid:pid, p:p, cost:cost, paid:paid, pending:cost-paid, vCost:vCost, vPaid:vPaid, margin:cost-vCost};
+    }).sort(function(a,b){ return b.pending - a.pending; });
+    var pending = tot.cost - tot.paid, owed = Math.max(0, tot.vCost - tot.vPaid);
+    $("#bsCards").innerHTML =
+      '<div class="card stat"><div class="label">Project value</div><div class="value num">'+fmtMoney(tot.cost)+'</div><div class="delta">'+rows.length+' project(s)</div></div>'+
+      '<div class="card stat"><div class="label">Received</div><div class="value num" style="color:var(--success)">'+fmtMoney(tot.paid)+'</div><div class="delta">'+(tot.cost? Math.round(tot.paid/tot.cost*100) : 0)+'% collected</div></div>'+
+      '<div class="card stat"><div class="label">Pending to receive</div><div class="value num" style="color:'+(pending>0?"var(--danger)":"var(--success)")+'">'+fmtMoney(pending)+'</div><div class="delta">from clients</div></div>'+
+      '<div class="card stat"><div class="label">Owed to vendors</div><div class="value num" style="color:'+(owed>0?"var(--danger)":"var(--success)")+'">'+fmtMoney(owed)+'</div><div class="delta">'+fmtMoney(tot.vPaid)+' paid so far</div></div>';
+    var body = $("#bsBody");
+    if(!rows.length){ body.innerHTML = '<tr class="empty-row"><td colspan="8">No projects yet.</td></tr>'; return; }
+    body.innerHTML = rows.map(function(r){
+      var cl = clients[r.p.clientId] || {};
+      return '<tr class="clickable" data-open-project="'+r.pid+'">'+
+        '<td class="name-cell">'+esc(r.p.title)+'</td>'+
+        '<td>'+esc(cl.name||"—")+'</td>'+
+        '<td class="num">'+fmtMoney(r.cost)+'</td>'+
+        '<td class="num" style="color:var(--success)">'+fmtMoney(r.paid)+'</td>'+
+        '<td class="num" style="color:'+(r.pending>0?"var(--danger)":"var(--success)")+'">'+fmtMoney(r.pending)+'</td>'+
+        '<td class="num">'+(r.vCost? fmtMoney(r.vCost) : "—")+'</td>'+
+        '<td class="num">'+(r.vCost || r.vPaid ? fmtMoney(r.vPaid) : "—")+'</td>'+
+        '<td class="num">'+fmtMoney(r.margin)+'</td>'+
       '</tr>';
     }).join("");
   }
+
+  function goCashflowFor(scope){
+    $("#cashAllMonths").checked = true;
+    buildCashScopeOptions(scope);
+    navTo("cashflow");
+  }
+
+  // ----- Cash entry modal: client -> project -> "recorded as project payment" -----
+  function fillCeProjects(clientId, selected){
+    var ids = Object.keys(projects).filter(function(pid){ return !clientId || projects[pid].clientId === clientId; })
+      .sort(function(a,b){ return projects[a].title.localeCompare(projects[b].title); });
+    $("#ceProjectId").innerHTML = '<option value="">— No project —</option>' + ids.map(function(pid){
+      var c = clients[projects[pid].clientId] || {};
+      return '<option value="'+pid+'">'+esc(projects[pid].title)+(clientId ? '' : ' — '+esc(c.name||""))+'</option>';
+    }).join("");
+    $("#ceProjectId").value = selected && ids.indexOf(String(selected)) !== -1 ? String(selected) : "";
+  }
+  function updateCeHint(){
+    var pid = $("#ceProjectId").value, income = $("#ceType").value === "income", editing = !!$("#ceId").value;
+    var hint = $("#ceProjectHint"), modeField = $("#ceModeField");
+    if(pid && income){
+      var p = projects[pid], pending = (Number(p.totalAmount)||0) - calcProjectPaid(pid);
+      hint.style.display = ""; modeField.style.display = "";
+      hint.innerHTML = (editing ? 'This entry will <b>move into</b> ' : 'Saved as a <b>payment</b> on ')+'<b>'+esc(p.title)+'</b>. Its Received and Pending update everywhere (currently pending '+fmtMoney(pending)+').';
+    } else if(pid){
+      hint.style.display = ""; modeField.style.display = "none";
+      hint.innerHTML = 'Tagged to <b>'+esc(projects[pid].title)+'</b> as a project expense.';
+    } else { hint.style.display = "none"; modeField.style.display = "none"; }
+  }
+  (function(){
+    var c = $("#ceClientId"), p = $("#ceProjectId"), t = $("#ceType");
+    if(c) c.addEventListener("change", function(){ fillCeProjects(c.value, p.value); updateCeHint(); });
+    if(p) p.addEventListener("change", function(){ if(p.value) c.value = projects[p.value].clientId; updateCeHint(); });
+    if(t) t.addEventListener("change", updateCeHint);
+  })();
 
   function openCashEntryModal(id){
     var entry = id ? cashEntries.filter(function(item){ return String(item.id) === String(id); })[0] : null;
@@ -966,10 +1092,13 @@
       .map(function(id){ return '<option value="'+id+'">'+esc(clients[id].name)+'</option>'; }).join("");
     $("#ceClientId").innerHTML = '<option value="">Not linked to a client</option>' + clientOptions;
     $("#ceClientId").value = entry && entry.clientId ? entry.clientId : "";
+    fillCeProjects($("#ceClientId").value, entry ? entry.projectId : "");
+    $("#ceMode").value = "Bank Transfer";
     $("#ceCategory").value = entry ? entry.category : "";
     $("#cashCategorySuggestions").innerHTML = cashEntries.map(function(entry){ return entry.category; }).filter(function(category, index, list){ return category && list.indexOf(category) === index; })
       .sort(function(a,b){ return a.localeCompare(b); }).map(function(category){ return '<option value="'+esc(category)+'">'; }).join("");
     $("#ceNote").value = entry ? entry.note : "";
+    updateCeHint();
     openModal("cashEntryModalBackdrop");
   }
 
@@ -1234,6 +1363,9 @@
     else if(action==="edit-cash-entry") openCashEntryModal(t.getAttribute("data-id"));
     else if(action==="save-cash-entry") saveCashEntry();
     else if(action==="delete-cash-entry") deleteCashEntry(t.getAttribute("data-id"));
+    else if(action==="delete-payment-row") deleteRowPayment("api/payments.php", t.getAttribute("data-id"), "Delete this client payment? The project's Received/Pending will change.");
+    else if(action==="delete-vendor-row") deleteRowPayment("api/vendor_payments.php", t.getAttribute("data-id"), "Delete this vendor payment?");
+    else if(action==="cashflow-for") goCashflowFor(t.getAttribute("data-scope"));
     else if(action==="add-item") addItemRow();
     else if(action==="save-invoice") saveInvoice();
     else if(action==="save-settings") saveSettings();
@@ -1296,7 +1428,7 @@
     };
   }
   function mapCashEntryRow(r){
-    return { id: r.id, clientId: r.client_id != null ? String(r.client_id) : null, clientName: r.client_name || "", entryType: r.entry_type, title: r.title, category: r.category,
+    return { id: r.id, clientId: r.client_id != null ? String(r.client_id) : null, projectId: r.project_id != null ? String(r.project_id) : null, projectTitle: r.project_title || "", clientName: r.client_name || "", entryType: r.entry_type, title: r.title, category: r.category,
       amount: Number(r.amount)||0, date: r.entry_date, month: r.month,
       planStatus: r.plan_status, note: r.note };
   }
@@ -1344,7 +1476,7 @@
       (vendorPaymentsRes.vendor_payments||[]).forEach(function(v){
         var pid = String(v.project_id);
         if(!vendorPayments[pid]) vendorPayments[pid] = [];
-        vendorPayments[pid].push({ amount: Number(v.amount)||0, date: v.payment_date, mode: v.mode, note: v.note });
+        vendorPayments[pid].push({ id: String(v.id), amount: Number(v.amount)||0, date: v.payment_date, mode: v.mode, note: v.note });
       });
 
       invoices = {};
@@ -1450,12 +1582,23 @@
     var payload = {
       op: id ? "update" : "create", id: id ? Number(id) : undefined, entry_type: $("#ceType").value, title: title, amount: amount,
       client_id: $("#ceClientId").value ? Number($("#ceClientId").value) : null,
+      project_id: $("#ceProjectId").value ? Number($("#ceProjectId").value) : null, mode: $("#ceMode").value,
       entry_date: $("#ceDate").value || todayISO(), category: $("#ceCategory").value.trim(),
       plan_status: $("#cePlanStatus").value, note: $("#ceNote").value.trim()
     };
     api("api/cash_entries.php", {method:"POST", body: JSON.stringify(payload)})
-      .then(function(){ toast(id ? "Cash-flow entry updated" : "Cash-flow entry saved"); closeModals(); return refreshAndRender(); })
+      .then(function(res){
+        toast(res && res.as_payment ? "Recorded as a project payment — project balance updated" : (id ? "Cash-flow entry updated" : "Cash-flow entry saved"));
+        closeModals(); return refreshAndRender();
+      })
       .catch(function(err){ toast("Couldn't save: "+err.message); });
+  }
+
+  function deleteRowPayment(url, id, question){
+    if(!id || !window.confirm(question)) return;
+    api(url, {method:"POST", body: JSON.stringify({op:"delete", id:Number(id)})})
+      .then(function(){ toast("Payment deleted"); return refreshAndRender(); })
+      .catch(function(err){ toast("Couldn't delete: "+err.message); });
   }
 
   function deleteCashEntry(id){
@@ -1629,6 +1772,8 @@
     $("#cashMonth").value = currentMonthISO();
     $("#cashMonth").addEventListener("change", renderCashflow);
     $("#cashCategoryFilter").addEventListener("change", renderCashflow);
+    $("#cashScope").addEventListener("change", renderCashflow);
+    $("#cashAllMonths").addEventListener("change", renderCashflow);
     loadAll().then(function(){
       renderAll();
       var h = location.hash.slice(1);
