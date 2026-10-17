@@ -1049,14 +1049,26 @@
   }
 
   // ----- Cash entry modal: client -> project -> "recorded as project payment" -----
+  function fillCeClients(selected){
+    var income = $("#ceType").value === "income";
+    $("#ceClientLabel").textContent = income ? "Which client is this payment from?" : "Related client (optional)";
+    var opts = income ? '<option value="">— Select client —</option><option value="none">Not from a client (general income)</option>'
+                      : '<option value="">No client</option>';
+    opts += Object.keys(clients).sort(function(a,b){ return clients[a].name.localeCompare(clients[b].name); })
+      .map(function(id){ return '<option value="'+id+'">'+esc(clients[id].name)+'</option>'; }).join("");
+    $("#ceClientId").innerHTML = opts;
+    $("#ceClientId").value = selected || "";
+    if($("#ceClientId").value !== (selected||"")) $("#ceClientId").value = "";
+  }
+  function ceClientIdValue(){ var v = $("#ceClientId").value; return (v && v !== "none") ? v : ""; }
   function fillCeProjects(clientId, selected){
-    var ids = Object.keys(projects).filter(function(pid){ return !clientId || projects[pid].clientId === clientId; })
-      .sort(function(a,b){ return projects[a].title.localeCompare(projects[b].title); });
-    $("#ceProjectId").innerHTML = '<option value="">— No project —</option>' + ids.map(function(pid){
-      var c = clients[projects[pid].clientId] || {};
-      return '<option value="'+pid+'">'+esc(projects[pid].title)+(clientId ? '' : ' — '+esc(c.name||""))+'</option>';
+    var ids = clientId ? Object.keys(projects).filter(function(pid){ return projects[pid].clientId === clientId; })
+      .sort(function(a,b){ return projects[a].title.localeCompare(projects[b].title); }) : [];
+    $("#ceProjectId").innerHTML = '<option value="">— No specific project —</option>' + ids.map(function(pid){
+      return '<option value="'+pid+'">'+esc(projects[pid].title)+'</option>';
     }).join("");
     $("#ceProjectId").value = selected && ids.indexOf(String(selected)) !== -1 ? String(selected) : "";
+    $("#ceProjectField").style.display = clientId ? "" : "none";
   }
   function updateCeHint(){
     var pid = $("#ceProjectId").value, income = $("#ceType").value === "income", editing = !!$("#ceId").value;
@@ -1068,13 +1080,16 @@
     } else if(pid){
       hint.style.display = ""; modeField.style.display = "none";
       hint.innerHTML = 'Tagged to <b>'+esc(projects[pid].title)+'</b> as a project expense.';
+    } else if(income && ceClientIdValue()){
+      hint.style.display = ""; modeField.style.display = "none";
+      hint.innerHTML = 'Recorded as income from <b>'+esc(clients[ceClientIdValue()].name)+'</b>. Pick a project above if it is a payment for one, so the project balance updates.';
     } else { hint.style.display = "none"; modeField.style.display = "none"; }
   }
   (function(){
     var c = $("#ceClientId"), p = $("#ceProjectId"), t = $("#ceType");
-    if(c) c.addEventListener("change", function(){ fillCeProjects(c.value, p.value); updateCeHint(); });
-    if(p) p.addEventListener("change", function(){ if(p.value) c.value = projects[p.value].clientId; updateCeHint(); });
-    if(t) t.addEventListener("change", updateCeHint);
+    if(c) c.addEventListener("change", function(){ fillCeProjects(ceClientIdValue(), ""); updateCeHint(); });
+    if(p) p.addEventListener("change", updateCeHint);
+    if(t) t.addEventListener("change", function(){ var keep = ceClientIdValue(); fillCeClients(keep); fillCeProjects(ceClientIdValue(), $("#ceProjectId").value); updateCeHint(); });
   })();
 
   function openCashEntryModal(id){
@@ -1088,11 +1103,9 @@
     $("#ceTitle").value = entry ? entry.title : "";
     $("#ceAmount").value = entry ? entry.amount : "";
     $("#ceDate").value = entry ? entry.date : todayISO();
-    var clientOptions = Object.keys(clients).sort(function(a,b){ return clients[a].name.localeCompare(clients[b].name); })
-      .map(function(id){ return '<option value="'+id+'">'+esc(clients[id].name)+'</option>'; }).join("");
-    $("#ceClientId").innerHTML = '<option value="">Not linked to a client</option>' + clientOptions;
-    $("#ceClientId").value = entry && entry.clientId ? entry.clientId : "";
-    fillCeProjects($("#ceClientId").value, entry ? entry.projectId : "");
+    var pickedClient = entry && entry.clientId ? entry.clientId : (entry && entry.entryType === "income" ? "none" : "");
+    fillCeClients(pickedClient);
+    fillCeProjects(ceClientIdValue(), entry ? entry.projectId : "");
     $("#ceMode").value = "Bank Transfer";
     $("#ceCategory").value = entry ? entry.category : "";
     $("#cashCategorySuggestions").innerHTML = cashEntries.map(function(entry){ return entry.category; }).filter(function(category, index, list){ return category && list.indexOf(category) === index; })
@@ -1578,11 +1591,12 @@
     var title = $("#ceTitle").value.trim();
     var amount = Number($("#ceAmount").value);
     if(!title){ toast("Entry title is required"); return; }
+    if($("#ceType").value === "income" && !$("#ceClientId").value){ toast("Select which client this payment is from (or choose “Not from a client”)"); return; }
     if(!amount || amount <= 0){ toast("Enter a valid amount"); return; }
     var payload = {
       op: id ? "update" : "create", id: id ? Number(id) : undefined, entry_type: $("#ceType").value, title: title, amount: amount,
-      client_id: $("#ceClientId").value ? Number($("#ceClientId").value) : null,
-      project_id: $("#ceProjectId").value ? Number($("#ceProjectId").value) : null, mode: $("#ceMode").value,
+      client_id: ceClientIdValue() ? Number(ceClientIdValue()) : null,
+      project_id: ceClientIdValue() && $("#ceProjectId").value ? Number($("#ceProjectId").value) : null, mode: $("#ceMode").value,
       entry_date: $("#ceDate").value || todayISO(), category: $("#ceCategory").value.trim(),
       plan_status: $("#cePlanStatus").value, note: $("#ceNote").value.trim()
     };

@@ -283,10 +283,8 @@
         <div class="field"><label>Type</label><select id="ceType"><option value="income">Income / Incoming</option><option value="expense">Expense / Outgoing</option></select></div>
         <div class="field"><label>Planned status</label><select id="cePlanStatus"><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></div>
       </div>
-      <div class="grid2">
-        <div class="field"><label>Client (optional)</label><select id="ceClientId"><option value="">Not linked to a client</option></select></div>
-        <div class="field"><label>Project (optional)</label><select id="ceProjectId"><option value="">— No project —</option></select></div>
-      </div>
+      <div class="field"><label id="ceClientLabel">Which client is this payment from?</label><select id="ceClientId"></select></div>
+      <div class="field" id="ceProjectField" style="display:none;"><label>Which project? (optional)</label><select id="ceProjectId"><option value="">— No specific project —</option></select></div>
       <div class="hint" id="ceProjectHint" style="display:none; margin:-4px 0 12px; padding:9px 11px; background:var(--surface-2); border-radius:9px;"></div>
       <div class="field" id="ceModeField" style="display:none;"><label>Payment mode</label><select id="ceMode"><option>Bank Transfer</option><option>UPI</option><option>Cash</option><option>Cheque</option><option>Card</option><option>Other</option></select></div>
       <div class="field"><label>Title</label><input id="ceTitle" placeholder="e.g. Client payment, office rent, software subscription"></div>
